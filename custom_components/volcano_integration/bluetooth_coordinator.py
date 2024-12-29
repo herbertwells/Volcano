@@ -1,43 +1,39 @@
 """Bluetooth Coordinator/Manager for the Volcano Integration."""
 import asyncio
 import logging
+
 from bleak import BleakClient, BleakError
-
-# Constants
-BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
-
-# GATT Characteristic UUIDs
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"  # Current Temp
-UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan/Heat Notifications
-
-# Reconnect interval in seconds
-RECONNECT_INTERVAL = 3
 
 _LOGGER = logging.getLogger(__name__)
 
+# Static GATT/Bluetooth Info
+BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
+UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"   # Current Temp
+UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan/Heat Notifications
+
+# Connection + poll intervals
+RECONNECT_INTERVAL = 3
+TEMP_POLL_INTERVAL = 1
+
 
 class VolcanoBTManager:
-    """Manages asynchronous connection to the Volcano device over Bluetooth.
-
-    - Reads temperature every second.
-    - Subscribes to notifications for Fan/Heat control changes.
-    """
+    """Manages asynchronous connection to the Volcano device over Bluetooth."""
 
     def __init__(self):
         self._client = None
         self._connected = False
 
-        # We will store the latest read values here:
         self.current_temperature = None
         self.fan_heat_status = None
 
-        # We create a background task to manage connection and data flow
+        # Background task handle
         self._task = None
 
     def start(self, hass):
         """Start background tasks in Home Assistant event loop."""
         _LOGGER.debug("Starting the VolcanoBTManager background task.")
-        self._task = hass.loop.create_task(self._run())
+        if not self._task:
+            self._task = hass.loop.create_task(self._run())
 
     def stop(self):
         """Stop background tasks."""
@@ -47,18 +43,15 @@ class VolcanoBTManager:
             self._task = None
 
     async def _run(self):
-        """Background loop to keep the device connected and gather data."""
+        """Background loop to manage connection and read data."""
         while True:
-            # Ensure we're connected or attempt to connect
             if not self._connected:
                 await self._connect()
 
             if self._connected:
-                # Read temperature
                 await self._read_temperature()
 
-            # Sleep for 1 second between reads
-            await asyncio.sleep(1)
+            await asyncio.sleep(TEMP_POLL_INTERVAL)
 
     async def _connect(self):
         """Attempt to connect to the Bluetooth device."""
@@ -70,10 +63,7 @@ class VolcanoBTManager:
 
             if self._connected:
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
-
-                # Start listening to notifications
                 await self._subscribe_notifications()
-
             else:
                 _LOGGER.warning("Connection to %s was not successful.", BT_DEVICE_ADDRESS)
 
@@ -82,43 +72,37 @@ class VolcanoBTManager:
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_notifications(self):
-        """Subscribe to Fan/Heat characteristic notifications."""
-        if not self._connected or self._client is None:
+        """Subscribe to notifications for Fan/Heat characteristic."""
+        if not self._connected or not self._client:
             _LOGGER.error("Cannot subscribe to notifications - client not connected.")
             return
 
-        # Notification callback
         def notification_handler(sender: int, data: bytearray):
-            """Handle incoming notifications."""
+            """Handle incoming notifications for Fan/Heat control."""
             string_data = data.decode(errors="ignore")
             _LOGGER.debug("Received notification from %s: raw=%s, text='%s'", sender, data, string_data)
             self.fan_heat_status = string_data
 
         try:
-            _LOGGER.info("Subscribing to notifications for UUID: %s", UUID_FAN_HEAT)
+            _LOGGER.info("Subscribing to notifications on UUID: %s", UUID_FAN_HEAT)
             await self._client.start_notify(UUID_FAN_HEAT, notification_handler)
         except BleakError as e:
             _LOGGER.error("Failed to subscribe to notifications: %s", e)
 
     async def _read_temperature(self):
         """Read the Current Temperature characteristic."""
-        if not self._connected or self._client is None:
+        if not self._connected or not self._client:
             _LOGGER.warning("Not connected. Will attempt reconnect.")
             await self._disconnect()
             return
 
         try:
-            # Attempt reading the temperature characteristic
             data = await self._client.read_gatt_char(UUID_TEMP)
             _LOGGER.debug("Temperature raw data: %s", data)
 
-            # Parse raw bytes - just an example parse (assuming single float or int).
-            # Adjust parse as per actual device data format.
             if len(data) == 2:
-                # Example: 16-bit integer
                 self.current_temperature = int.from_bytes(data, byteorder="little", signed=True)
             else:
-                # Fallback for unknown data length - just log and store as None
                 _LOGGER.warning("Unexpected temperature data length: %d", len(data))
                 self.current_temperature = None
 
@@ -126,11 +110,10 @@ class VolcanoBTManager:
 
         except BleakError as e:
             _LOGGER.error("Error reading temperature characteristic: %s", e)
-            # Disconnect and attempt to reconnect
             await self._disconnect()
 
     async def _disconnect(self):
-        """Disconnect and mark as disconnected."""
+        """Disconnect from device and schedule a retry."""
         if self._client:
             _LOGGER.info("Disconnecting from Bluetooth device.")
             try:
