@@ -1,4 +1,5 @@
 """Volcano Integration for Home Assistant."""
+
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -13,7 +14,7 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up integration via YAML (if any), but we won't use it here."""
+    """Set up integration via YAML (if any)."""
     return True
 
 
@@ -21,15 +22,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
-    # Create the BT Manager instance and start it
+    # Create a Bluetooth manager instance
     manager = VolcanoBTManager()
-    manager.start(hass)
+    manager.start(hass)  # Start its background loop
 
-    # Store in hass.data so sensors can retrieve it
+    # Store in hass.data so we can retrieve it in the sensor platform
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
-    # Forward setup to the sensor platform
+    # Forward setup to our sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
@@ -39,7 +40,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload the Volcano Integration."""
     _LOGGER.debug("Unloading Volcano Integration entry: %s", entry.entry_id)
 
-    # Stop the manager
     manager = hass.data[DOMAIN].pop(entry.entry_id, None)
     if manager:
         manager.stop()
