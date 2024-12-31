@@ -4,7 +4,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .bluetooth_manager import VolcanoBTManager
+from .bluetooth_coordinator import VolcanoBTManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up integration from YAML if needed (not used here)."""
+    """Set up integration via YAML, if any (we won't use it here)."""
     return True
 
 
@@ -21,10 +21,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
+    # Instantiate the manager (now named 'VolcanoBTManager' but in bluetooth_coordinator.py)
     manager = VolcanoBTManager()
-    manager.start(hass)  # Start the continuous background loop (read temp, etc.)
+    manager.start(hass)  # Start the continuous background loop
 
-    # Store manager so sensors can access it
+    # Store it so sensors can access the manager
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
