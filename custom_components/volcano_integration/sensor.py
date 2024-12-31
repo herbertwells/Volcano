@@ -1,5 +1,6 @@
 """Platform for sensor integration."""
 import logging
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity import EntityCategory
 
@@ -16,11 +17,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([
         VolcanoRawTempSensor(manager),
         VolcanoFanHeatControlSensor(manager),
+        VolcanoBTStatusSensor(manager),
     ], update_before_add=True)
 
 
 class VolcanoRawTempSensor(SensorEntity):
-    """Sensor that just shows the raw temperature data as a string."""
+    """Sensor that just shows the raw temperature data as hex."""
 
     def __init__(self, manager):
         self._manager = manager
@@ -61,3 +63,25 @@ class VolcanoFanHeatControlSensor(SensorEntity):
         """Pull the last notification from the BT manager."""
         self._state = self._manager.fan_heat_status
         _LOGGER.debug("VolcanoFanHeatControlSensor updated to: %s", self._state)
+
+
+class VolcanoBTStatusSensor(SensorEntity):
+    """Sensor reflecting the current Bluetooth connectivity status."""
+
+    def __init__(self, manager):
+        self._manager = manager
+        self._state = None
+
+        self._attr_name = "Volcano Bluetooth Status"
+        self._attr_unique_id = "volcano_bt_status"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self):
+        """Return the manager's current Bluetooth status string."""
+        return self._state
+
+    async def async_update(self):
+        """Pull the BT status from the manager."""
+        self._state = self._manager.bt_status
+        _LOGGER.debug("VolcanoBTStatusSensor updated to: %s", self._state)
