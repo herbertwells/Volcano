@@ -4,6 +4,13 @@ import logging
 
 from bleak import BleakClient, BleakError
 
+from .const import (
+    BT_STATUS_CONNECTED,
+    BT_STATUS_CONNECTING,
+    BT_STATUS_DISCONNECTED,
+    BT_STATUS_ERROR
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 # Static GATT/Bluetooth Info
@@ -22,16 +29,24 @@ class VolcanoBTManager:
         self._client = None
         self._connected = False
 
-        # Store raw data (as a string) for current temperature
+        # We'll store raw temperature data (as hex) in this attribute
         self.current_temperature_raw = None
-
-        # Store the last notification string for fan/heat
+        # We'll store the last fan/heat notification string here
         self.fan_heat_status = None
 
+        # Tracks the current BT status for the new sensor
+        self._bt_status = BT_STATUS_DISCONNECTED
+
+        # The background task handle
         self._task = None
 
+    @property
+    def bt_status(self):
+        """Return the current Bluetooth status string."""
+        return self._bt_status
+
     def start(self, hass):
-        """Start the background loop in Home Assistant's event loop."""
+        """Start the background task in Home Assistant's event loop."""
         _LOGGER.debug("Starting the VolcanoBTManager background task.")
         if not self._task:
             self._task = hass.loop.create_task(self._run())
@@ -44,18 +59,21 @@ class VolcanoBTManager:
             self._task = None
 
     async def _run(self):
-        """Background loop: connect if needed, read temperature, etc."""
+        """Background loop: maintain connection, read temperature, etc."""
         while True:
             if not self._connected:
                 await self._connect()
 
             if self._connected:
+                # Attempt to read temperature if connected
                 await self._read_temperature()
 
+            # Sleep between polls
             await asyncio.sleep(TEMP_POLL_INTERVAL)
 
     async def _connect(self):
         """Attempt to connect to the Bluetooth device."""
+        self._bt_status = BT_STATUS_CONNECTING
         try:
             _LOGGER.info("Attempting Bluetooth connection to: %s", BT_DEVICE_ADDRESS)
             self._client = BleakClient(BT_DEVICE_ADDRESS)
@@ -63,13 +81,16 @@ class VolcanoBTManager:
             self._connected = await self._client.is_connected()
 
             if self._connected:
+                self._bt_status = BT_STATUS_CONNECTED
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
                 await self._subscribe_notifications()
             else:
                 _LOGGER.warning("Connection to %s was not successful.", BT_DEVICE_ADDRESS)
+                self._bt_status = BT_STATUS_DISCONNECTED
 
         except BleakError as e:
             _LOGGER.error("Error connecting to device: %s | Retrying in %s seconds", e, RECONNECT_INTERVAL)
+            self._bt_status = BT_STATUS_ERROR
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_notifications(self):
@@ -88,6 +109,7 @@ class VolcanoBTManager:
             await self._client.start_notify(UUID_FAN_HEAT, notification_handler)
         except BleakError as e:
             _LOGGER.error("Failed to subscribe to notifications: %s", e)
+            self._bt_status = BT_STATUS_ERROR
 
     async def _read_temperature(self):
         """Read the 'Current Temperature' characteristic as raw data."""
@@ -98,12 +120,13 @@ class VolcanoBTManager:
 
         try:
             data = await self._client.read_gatt_char(UUID_TEMP)
-            # Store it as a hex string (or however you'd like)
+            # Store it as a hex string
             self.current_temperature_raw = data.hex()
             _LOGGER.debug("Temperature raw data (hex): %s", self.current_temperature_raw)
 
         except BleakError as e:
             _LOGGER.error("Error reading temperature characteristic: %s", e)
+            self._bt_status = BT_STATUS_ERROR
             await self._disconnect()
 
     async def _disconnect(self):
@@ -117,5 +140,6 @@ class VolcanoBTManager:
 
         self._client = None
         self._connected = False
+        self._bt_status = BT_STATUS_DISCONNECTED
         _LOGGER.info("Disconnected. Will retry in %s seconds.", RECONNECT_INTERVAL)
         await asyncio.sleep(RECONNECT_INTERVAL)
