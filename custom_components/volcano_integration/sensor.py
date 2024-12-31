@@ -2,8 +2,8 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
 
@@ -26,20 +26,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 class VolcanoBaseSensor(SensorEntity):
     """
-    A base sensor to handle registration/unregistration with the manager.
-    We override `async_added_to_hass` and `async_will_remove_from_hass` to manage that.
+    Base sensor that handles registration/unregistration with the manager.
     """
 
     def __init__(self, manager):
         self._manager = manager
 
     async def async_added_to_hass(self):
-        """Register sensor so manager can notify it of new data."""
+        """Register with the manager for immediate update notifications."""
         _LOGGER.debug("Registering %s with VolcanoBTManager", self.name)
         self._manager.register_sensor(self)
 
     async def async_will_remove_from_hass(self):
-        """Unregister sensor when removed."""
+        """Unregister when removed."""
         _LOGGER.debug("Unregistering %s from VolcanoBTManager", self.name)
         self._manager.unregister_sensor(self)
 
@@ -61,7 +60,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        """Consider sensor 'available' only if BT is connected."""
+        """Optional: only available if BT is connected."""
         return (self._manager.bt_status == "CONNECTED")
 
 
@@ -95,10 +94,10 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
 
     @property
     def native_value(self):
-        """Return the manager's current BT status."""
+        """Return the manager's current BT status string."""
         return self._manager.bt_status
 
     @property
     def available(self):
-        """The status sensor is always available (even if it's an error)."""
+        # We keep this sensor always available to show error/disconnected states
         return True
