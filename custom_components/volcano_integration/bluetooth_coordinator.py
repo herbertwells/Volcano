@@ -1,4 +1,4 @@
-"""Bluetooth Coordinator for the Volcano Integration (Reverted _connect() approach)."""
+"""Bluetooth Coordinator for the Volcano Integration with defensive RSSI reading and reverted connect method."""
 import asyncio
 import logging
 import time
@@ -7,16 +7,19 @@ from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
 
+# Change this to your device's MAC address
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"     # Current Temperature
-UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c" # Fan/Pump notifications
+UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"      # Current Temperature
+UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan/Pump notifications
 
-RECONNECT_INTERVAL = 3
-POLL_INTERVAL = 0.5    # 0.5s temperature poll
-RSSI_INTERVAL = 60.0   # 60s for RSSI
+# Timings
+RECONNECT_INTERVAL = 3      # 3s before reconnect attempts
+POLL_INTERVAL = 0.5         # 0.5s for temperature
+RSSI_INTERVAL = 60.0        # 60s for RSSI
 
+# Fan/Pump patterns for two bytes: (heat_byte, fan_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -28,11 +31,17 @@ VALID_PATTERNS = {
 class VolcanoBTManager:
     """
     Manages:
-      - A background loop polling temperature every 0.5s
+      - A background loop that polls temperature every 0.5s
       - Subscribes to fan/pump notifications
-      - Periodically reads RSSI (every 60s)
-      - Provides user connect/disconnect methods
-      - Reverts the _connect() to the older, fully async 'await is_connected()' approach
+      - Reads RSSI every 60s (if supported)
+      - Exposes:
+         * current_temperature
+         * heat_state (ON/OFF/UNKNOWN)
+         * fan_state (ON/OFF/UNKNOWN)
+         * rssi
+         * bt_status
+      - Buttons can call async_user_connect() / async_user_disconnect()
+      - _connect() reverted to older approach using 'await is_connected()'
     """
 
     def __init__(self):
@@ -51,53 +60,59 @@ class VolcanoBTManager:
         self._stop_event = asyncio.Event()
         self._sensors = []
 
+        # Track last time we read RSSI
         self._last_rssi_time = 0.0
 
     def register_sensor(self, sensor_entity):
+        """Register a sensor so it can be notified of new data."""
         if sensor_entity not in self._sensors:
             self._sensors.append(sensor_entity)
 
     def unregister_sensor(self, sensor_entity):
+        """Unregister a sensor."""
         if sensor_entity in self._sensors:
             self._sensors.remove(sensor_entity)
 
     def start(self, hass):
-        """Start the main loop in HA's event loop."""
+        """
+        Start the manager in Home Assistant's event loop.
+        The background task will keep trying to connect, read temperature, etc.
+        """
         _LOGGER.debug("VolcanoBTManager.start() -> creating background task.")
         self._hass = hass
         self._stop_event.clear()
         self._task = hass.loop.create_task(self._run())
 
     def stop(self):
-        """Stop the main loop by setting the stop_event."""
+        """Stop the background loop by setting the stop_event."""
         _LOGGER.debug("VolcanoBTManager.stop() -> stopping background task.")
         if self._task and not self._task.done():
             self._stop_event.set()
 
     async def _run(self):
-        """Main loop: connect if needed, poll temp, check RSSI, handle reconnect."""
+        """Main loop: connect if needed, poll temperature, handle RSSI, etc."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
             if not self._connected:
                 await self._connect()
 
             if self._connected:
+                # Poll temperature
                 await self._read_temperature()
 
-                # Check if it's time to read RSSI
+                # Periodically read RSSI (every 60s)
                 now = time.time()
                 if (now - self._last_rssi_time) >= RSSI_INTERVAL:
                     await self._read_rssi()
                     self._last_rssi_time = now
 
-            # Wait 0.5s between loops
             await asyncio.sleep(POLL_INTERVAL)
 
-        _LOGGER.debug("Exiting VolcanoBTManager._run() loop -> disconnecting.")
+        _LOGGER.debug("Exiting VolcanoBTManager._run() -> disconnecting.")
         await self._disconnect()
 
     async def _connect(self):
-        """Attempt to connect to the BLE device, reverting to the older approach."""
+        """Attempt to connect to the BLE device (old approach: await is_connected())."""
         try:
             _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
             self.bt_status = "CONNECTING"
@@ -105,7 +120,7 @@ class VolcanoBTManager:
             self._client = BleakClient(BT_DEVICE_ADDRESS)
 
             await self._client.connect()
-            # REVERT: Old approach calls await is_connected()
+            # Reverted approach:
             self._connected = await self._client.is_connected()
 
             if self._connected:
@@ -114,7 +129,7 @@ class VolcanoBTManager:
                 await self._subscribe_notifications()
             else:
                 _LOGGER.warning(
-                    "Connection to %s was not successful. Retrying in %s sec...",
+                    "Connection to %s unsuccessful. Retrying in %s sec...",
                     BT_DEVICE_ADDRESS, RECONNECT_INTERVAL
                 )
                 self.bt_status = "DISCONNECTED"
@@ -130,27 +145,33 @@ class VolcanoBTManager:
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_notifications(self):
-        """Subscribe to fan/pump notifications (two-byte pattern)."""
+        """Subscribe to fan/pump notifications (two bytes)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot subscribe to fan/pump notifications: not connected.")
             return
 
         def notification_handler(sender: int, data: bytearray):
             _LOGGER.debug("Fan/Pump notification raw: %s", data.hex())
-            b1, b2 = 0, 0
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
-
-            if (b1, b2) in VALID_PATTERNS:
-                heat_val, fan_val = VALID_PATTERNS[(b1, b2)]
-                self.heat_state = heat_val
-                self.fan_state = fan_val
-                _LOGGER.debug("Parsed fan/pump => heat=%s, fan=%s (0x%02x, 0x%02x)",
-                              heat_val, fan_val, b1, b2)
+                if (b1, b2) in VALID_PATTERNS:
+                    heat_val, fan_val = VALID_PATTERNS[(b1, b2)]
+                    self.heat_state = heat_val
+                    self.fan_state = fan_val
+                    _LOGGER.debug(
+                        "Parsed fan/pump => heat=%s, fan=%s (pattern=(0x%02x, 0x%02x))",
+                        heat_val, fan_val, b1, b2
+                    )
+                else:
+                    self.heat_state = "UNKNOWN"
+                    self.fan_state = "UNKNOWN"
+                    _LOGGER.warning(
+                        "Unknown fan/pump pattern (0x%02x, 0x%02x).", b1, b2
+                    )
             else:
                 self.heat_state = "UNKNOWN"
                 self.fan_state = "UNKNOWN"
-                _LOGGER.warning("Unknown fan/pump pattern (0x%02x, 0x%02x).", b1, b2)
+                _LOGGER.warning("Fan/Pump notification too short: %d byte(s).", len(data))
 
             self._notify_sensors()
 
@@ -164,7 +185,7 @@ class VolcanoBTManager:
             self.bt_status = err_str
 
     async def _read_temperature(self):
-        """Read temperature characteristic every 0.5s."""
+        """Read the temperature characteristic every 0.5s."""
         if not self._connected or not self._client:
             _LOGGER.debug("Not connected -> skipping temperature read.")
             return
@@ -192,14 +213,14 @@ class VolcanoBTManager:
             await self._disconnect()
 
     async def _read_rssi(self):
-        """Read device RSSI (dBm) every 60s."""
+        """Read the RSSI (dBm) every 60s, if supported by the backend."""
         if not self._connected or not self._client:
             _LOGGER.debug("Not connected -> skipping RSSI read.")
             return
 
         try:
             rssi_val = await self._client.get_rssi()
-        except AttributeError as e_attr:
+        except (AttributeError, NotImplementedError) as e_attr:
             _LOGGER.debug("get_rssi() not implemented on this backend: %s", e_attr)
             rssi_val = None
         except BleakError as e:
@@ -216,10 +237,12 @@ class VolcanoBTManager:
         self._notify_sensors()
 
     def _notify_sensors(self):
+        """Notify all registered sensors that new data is available."""
         for sensor_entity in self._sensors:
             sensor_entity.schedule_update_ha_state(True)
 
     async def _disconnect(self):
+        """Disconnect from the BLE device so we can attempt to reconnect next cycle."""
         if self._client:
             _LOGGER.debug("Disconnecting from device %s.", BT_DEVICE_ADDRESS)
             try:
