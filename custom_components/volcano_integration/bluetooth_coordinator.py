@@ -29,12 +29,12 @@ class VolcanoBTManager:
         self._client = None
         self._connected = False
 
-        # We'll store raw temperature data (as hex) in this attribute
-        self.current_temperature_raw = None
+        # We'll store a *numeric* temperature in self.current_temperature (float)
+        self.current_temperature = None
         # We'll store the last fan/heat notification string here
         self.fan_heat_status = None
 
-        # Tracks the current BT status for the new sensor
+        # Tracks the current BT status for the BT status sensor
         self._bt_status = BT_STATUS_DISCONNECTED
 
         # The background task handle
@@ -112,7 +112,7 @@ class VolcanoBTManager:
             self._bt_status = BT_STATUS_ERROR
 
     async def _read_temperature(self):
-        """Read the 'Current Temperature' characteristic as raw data."""
+        """Read the 'Current Temperature' characteristic, parse as a 16-bit int / 10."""
         if not self._connected or not self._client:
             _LOGGER.warning("Not connected. Will attempt reconnect.")
             await self._disconnect()
@@ -120,9 +120,24 @@ class VolcanoBTManager:
 
         try:
             data = await self._client.read_gatt_char(UUID_TEMP)
-            # Store it as a hex string
-            self.current_temperature_raw = data.hex()
-            _LOGGER.debug("Temperature raw data (hex): %s", self.current_temperature_raw)
+            # data should be 4 bytes, e.g. b6030000
+            _LOGGER.debug("Temperature raw data (hex): %s", data.hex())
+
+            if len(data) < 2:
+                _LOGGER.warning("Expected at least 2 bytes, got %d", len(data))
+                self.current_temperature = None
+            else:
+                # Interpret first 2 bytes as an unsigned 16-bit int in little-endian
+                temp_raw_16 = int.from_bytes(data[0:2], byteorder="little", signed=False)
+                # Divide by 10 to get actual temp (assuming it's in tenths of a degree)
+                self.current_temperature = temp_raw_16 / 10.0
+
+                _LOGGER.debug(
+                    "Parsed temperature: %.1f °C (raw 16-bit: %d, hex: %s)",
+                    self.current_temperature,
+                    temp_raw_16,
+                    data.hex()
+                )
 
         except BleakError as e:
             _LOGGER.error("Error reading temperature characteristic: %s", e)
