@@ -9,13 +9,14 @@ from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class VolcanoIntegrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Volcano Integration."""
-    
+
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step for the user to 'Submit'."""
+        """Handle the initial step with a simple Submit form."""
         if user_input is not None:
             return self.async_create_entry(title="Volcano Integration", data={})
 
