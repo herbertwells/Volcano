@@ -1,8 +1,12 @@
 """Platform for sensor integration."""
 import logging
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorDeviceClass,
+)
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import UnitOfTemperature
 
 from .const import DOMAIN
 
@@ -15,32 +19,38 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     manager = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([
-        VolcanoRawTempSensor(manager),
+        VolcanoCurrentTempSensor(manager),         # NEW numeric temperature sensor
         VolcanoFanHeatControlSensor(manager),
         VolcanoBTStatusSensor(manager),
     ], update_before_add=True)
 
 
-class VolcanoRawTempSensor(SensorEntity):
-    """Sensor that just shows the raw temperature data as hex."""
+class VolcanoCurrentTempSensor(SensorEntity):
+    """Numeric Temperature Sensor for the Volcano device."""
 
     def __init__(self, manager):
+        """Initialize the numeric temperature sensor."""
         self._manager = manager
-        self._state = None
+        self._attr_name = "Volcano Current Temperature"
+        self._attr_unique_id = "volcano_current_temperature"
+        # Tell HA this is a temperature sensor (improves UI, graphs, etc.)
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        # New recommended approach for units:
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        # Not strictly needed, but if you want it in Diagnostics or none:
+        # self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-        self._attr_name = "Volcano Temperature (Raw Data)"
-        self._attr_unique_id = "volcano_temp_raw"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._state = None
 
     @property
     def native_value(self):
-        """Return the raw temperature data in hex form."""
+        """Return the current temperature as a float in Celsius."""
         return self._state
 
     async def async_update(self):
-        """Pull the latest raw data from the BT manager."""
-        self._state = self._manager.current_temperature_raw
-        _LOGGER.debug("VolcanoRawTempSensor updated to: %s", self._state)
+        """Refresh the sensor state from the BT manager."""
+        self._state = self._manager.current_temperature
+        _LOGGER.debug("VolcanoCurrentTempSensor updated to: %s °C", self._state)
 
 
 class VolcanoFanHeatControlSensor(SensorEntity):
@@ -48,11 +58,10 @@ class VolcanoFanHeatControlSensor(SensorEntity):
 
     def __init__(self, manager):
         self._manager = manager
-        self._state = None
-
         self._attr_name = "Volcano Fan/Heat Control"
         self._attr_unique_id = "volcano_fan_heat_control"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._state = None
 
     @property
     def native_value(self):
@@ -70,11 +79,10 @@ class VolcanoBTStatusSensor(SensorEntity):
 
     def __init__(self, manager):
         self._manager = manager
-        self._state = None
-
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._state = None
 
     @property
     def native_value(self):
