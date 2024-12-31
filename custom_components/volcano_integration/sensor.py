@@ -1,9 +1,9 @@
-"""Platform for sensor integration, creating separate sensors for heat, fan, temperature, and BT status."""
+"""Platform for sensor integration, now including an RSSI sensor."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS
 
 from . import DOMAIN
 
@@ -11,9 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """
-    Set up Volcano sensors for a config entry.
-    """
+    """Set up Volcano sensors for a config entry."""
     _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
 
     manager = hass.data[DOMAIN][entry.entry_id]
@@ -23,12 +21,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoHeatSensor(manager),
         VolcanoFanSensor(manager),
         VolcanoBTStatusSensor(manager),
+        VolcanoRSSISensor(manager),  # <--- NEW RSSI sensor
     ]
     async_add_entities(entities)
 
 
 class VolcanoBaseSensor(SensorEntity):
-    """Base sensor that registers with the VolcanoBTManager."""
+    """Base sensor that registers/unregisters with the VolcanoBTManager."""
 
     def __init__(self, manager):
         self._manager = manager
@@ -43,7 +42,7 @@ class VolcanoBaseSensor(SensorEntity):
 
 
 class VolcanoCurrentTempSensor(VolcanoBaseSensor):
-    """Numeric Temperature Sensor for the Volcano device (°C)."""
+    """Numeric Temperature Sensor (°C)."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -64,7 +63,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
 
 class VolcanoHeatSensor(VolcanoBaseSensor):
-    """Sensor for the Volcano's Heat state (ON/OFF)."""
+    """Heat state (ON/OFF) from the left byte in notifications."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -84,7 +83,7 @@ class VolcanoHeatSensor(VolcanoBaseSensor):
 
 
 class VolcanoFanSensor(VolcanoBaseSensor):
-    """Sensor for the Volcano's Fan state (ON/OFF)."""
+    """Fan state (ON/OFF) from the right byte in notifications."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -104,7 +103,7 @@ class VolcanoFanSensor(VolcanoBaseSensor):
 
 
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
-    """Sensor that shows the current Bluetooth status/error string."""
+    """Sensor that shows the current BT status/error string."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -120,5 +119,30 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        # Always show the BT Status sensor, so user can see errors/disconnect states
+        # Always show the BT Status sensor
         return True
+
+
+class VolcanoRSSISensor(VolcanoBaseSensor):
+    """Sensor that shows the device RSSI in dBm (updated every 60s)."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano RSSI"
+        self._attr_unique_id = "volcano_rssi"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        # There's no built-in device_class for RSSI, but we can at least specify a unit
+        self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS
+
+    @property
+    def native_value(self):
+        val = self._manager.rssi
+        _LOGGER.debug("%s: native_value -> %s dBm", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        # If device is disconnected, you won't get new RSSI. 
+        # But we can still show the last known value or None.
+        # Let's consider it "unavailable" if not connected.
+        return (self._manager.bt_status == "CONNECTED")
