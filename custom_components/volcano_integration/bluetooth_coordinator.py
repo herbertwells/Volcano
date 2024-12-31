@@ -4,6 +4,7 @@ import async_timeout
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,10 +40,10 @@ class VolcanoCoordinator(DataUpdateCoordinator):
 
         # We'll store updated info in self.data
         self.data = {
-            "temperature": None,         # float (°C)
-            "fan_heat_status": None,     # string from notifications
-            "rssi": None,               # int dBm (or None)
-            "bt_status": "DISCONNECTED"  # str with possible "CONNECTED", or "ERROR: ..."
+            "temperature": None,          # float (°C)
+            "fan_heat_status": None,      # string from notifications
+            "rssi": None,                 # int dBm (or None if unsupported)
+            "bt_status": "DISCONNECTED",  # str: "CONNECTED", "DISCONNECTED", or "ERROR: ..."
         }
 
         # We'll schedule updates every second manually
@@ -52,6 +53,7 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         """
         Called by __init__ right after creation, to do immediate refresh & schedule next.
         """
+        _LOGGER.debug("async_config_entry_first_refresh() called.")
         await self.async_refresh()
         self._schedule_refresh()
 
@@ -60,23 +62,30 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         Schedule the next refresh in 1s.
         If there's already a TimerHandle, cancel it before creating a new one.
         """
+        _LOGGER.debug("Entered _schedule_refresh().")
         if self._unsub_refresh:
-            self._unsub_refresh.cancel()  # It's a TimerHandle, not callable
+            _LOGGER.debug("Cancelling existing timer handle.")
+            self._unsub_refresh.cancel()
             self._unsub_refresh = None
 
+        _LOGGER.debug("Scheduling next refresh in %s second(s).", UPDATE_INTERVAL)
         self._unsub_refresh = self.hass.loop.call_later(
-            UPDATE_INTERVAL, self._scheduled_refresh
+            UPDATE_INTERVAL,
+            self._scheduled_refresh
         )
 
     def _scheduled_refresh(self):
         """Callback when the 1s timer fires. Create a task to refresh, then re-schedule."""
+        _LOGGER.debug("_scheduled_refresh() fired -> calling async_refresh().")
         self.hass.async_create_task(self.async_refresh())
 
     async def async_refresh(self) -> None:
         """Override refresh to add scheduling logic (1 second)."""
+        _LOGGER.debug("async_refresh() started -> calling super().async_refresh().")
         await super().async_refresh()
-        # After the refresh is done, schedule again
+        _LOGGER.debug("async_refresh() done -> re-scheduling next update.")
         if self._unsub_refresh:
+            _LOGGER.debug("Cancelling old timer before scheduling again.")
             self._unsub_refresh.cancel()
             self._unsub_refresh = None
         self._schedule_refresh()
@@ -86,14 +95,17 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         Called by DataUpdateCoordinator to fetch fresh data.
         We do single read ops (temp & optional RSSI). If not connected, attempt to connect.
         """
+        _LOGGER.debug("Entering _async_update_data(): connected=%s, bt_status=%s",
+                      self._connected, self.data["bt_status"])
+
         if not self._connected:
             self.data["bt_status"] = "CONNECTING"
             try:
-                _LOGGER.debug("Attempting Bluetooth connection to %s", BT_DEVICE_ADDRESS)
+                _LOGGER.debug("Creating BleakClient and connecting to %s.", BT_DEVICE_ADDRESS)
                 self._client = BleakClient(BT_DEVICE_ADDRESS)
                 await self._client.connect()
-                
-                # Since is_connected is now a property, remove 'await'
+
+                # `is_connected` is now a property in HaBleakClientWrapper
                 self._connected = self._client.is_connected
                 if self._connected:
                     _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
@@ -114,14 +126,16 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         if self._connected and self._client:
             try:
                 async with async_timeout.timeout(5):
+                    _LOGGER.debug("Reading temperature from device.")
                     await self._read_temperature()
-                    # Optionally read RSSI (skip if not supported)
+
+                    _LOGGER.debug("Trying to read RSSI (may be unsupported).")
                     try:
                         await self._read_rssi()
-                    except AttributeError as e_attr:
-                        # HaBleakClientWrapper has no get_rssi => skip
-                        _LOGGER.debug("get_rssi() not available on this backend: %s", e_attr)
+                    except AttributeError as ae:
+                        _LOGGER.debug("RSSI not supported on this backend (%s). Setting to None.", ae)
                         self.data["rssi"] = None
+
             except BleakError as e:
                 error_str = f"ERROR: {str(e)}"
                 _LOGGER.error("Bleak error while reading data: %s", error_str)
@@ -135,10 +149,12 @@ class VolcanoCoordinator(DataUpdateCoordinator):
                 await self._disconnect()
                 raise UpdateFailed(error_str)
 
+        _LOGGER.debug("Leaving _async_update_data() -> returning data: %s", self.data)
         return self.data
 
     async def _subscribe_fan_heat_notifications(self):
         """Set up notifications for the fan/heat characteristic."""
+        _LOGGER.debug("Entered _subscribe_fan_heat_notifications().")
         if not self._connected or not self._client:
             _LOGGER.error("Cannot subscribe to notifications: not connected.")
             return
@@ -149,26 +165,16 @@ class VolcanoCoordinator(DataUpdateCoordinator):
             self.data["fan_heat_status"] = text
 
         try:
-            _LOGGER.debug("Subscribing to notifications on UUID: %s", UUID_FAN_HEAT)
+            _LOGGER.debug("start_notify(%s) for fan/heat.", UUID_FAN_HEAT)
             await self._client.start_notify(UUID_FAN_HEAT, notification_handler)
         except BleakError as e:
             error_str = f"ERROR: {str(e)}"
             _LOGGER.error("Failed to subscribe to notifications: %s", error_str)
             self.data["bt_status"] = error_str
 
-    async def _disconnect(self):
-        """Disconnect from the device so next update can try reconnect."""
-        if self._client:
-            _LOGGER.debug("Disconnecting from device.")
-            try:
-                await self._client.disconnect()
-            except BleakError as e:
-                _LOGGER.error("Error during disconnect: %s", e)
-        self._connected = False
-        self.data["bt_status"] = "DISCONNECTED"
-
     async def _read_temperature(self):
         """Read the temperature characteristic."""
+        _LOGGER.debug("Entered _read_temperature().")
         if not self._client or not self._connected:
             raise BleakError("Client not connected.")
 
@@ -176,11 +182,11 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Temperature raw (hex) = %s", data.hex())
 
         if len(data) < 2:
-            _LOGGER.warning("Expected at least 2 bytes for temperature, got %d", len(data))
+            _LOGGER.warning("Expected >= 2 bytes for temperature, got %d", len(data))
             self.data["temperature"] = None
             return
 
-        # Parse first two bytes as an unsigned 16-bit integer in little-endian
+        # Parse first 2 bytes as an unsigned 16-bit integer in little-endian
         raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
         # Typically device is storing tenths of a degree
         temp_c = raw_16 / 10.0
@@ -193,6 +199,7 @@ class VolcanoCoordinator(DataUpdateCoordinator):
         Some Bleak backends or HaBleakClientWrapper might not implement get_rssi().
         We'll handle AttributeError if it's missing.
         """
+        _LOGGER.debug("Entered _read_rssi().")
         if not self._client or not self._connected:
             raise BleakError("Client not connected.")
 
@@ -201,12 +208,32 @@ class VolcanoCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Read RSSI = %s dBm", rssi)
             self.data["rssi"] = rssi
         else:
-            _LOGGER.debug("RSSI not supported or returned None.")
+            _LOGGER.debug("RSSI returned None -> not supported or unknown.")
             self.data["rssi"] = None
 
+    async def _disconnect(self):
+        """Disconnect from the device so next update can try reconnect."""
+        _LOGGER.debug("_disconnect() called. Setting bt_status=DISCONNECTED.")
+        if self._client:
+            _LOGGER.debug("Disconnecting from device.")
+            try:
+                await self._client.disconnect()
+            except BleakError as e:
+                _LOGGER.error("Error during disconnect: %s", e)
+        self._connected = False
+        self.data["bt_status"] = "DISCONNECTED"
+        _LOGGER.debug("Done _disconnect(): connected=%s, bt_status=%s",
+                      self._connected, self.data["bt_status"])
+
     async def async_unload(self):
-        """Clean up coordinator (cancel timer, disconnect, etc.) on unload."""
+        """
+        Clean up coordinator (cancel timer, disconnect, etc.) on unload.
+        Called from __init__.py async_unload_entry or on shutdown.
+        """
+        _LOGGER.debug("async_unload() called, canceling timer & disconnecting.")
         if self._unsub_refresh:
+            _LOGGER.debug("Canceling refresh timer in async_unload().")
             self._unsub_refresh.cancel()
             self._unsub_refresh = None
         await self._disconnect()
+        _LOGGER.debug("Finished async_unload().")
