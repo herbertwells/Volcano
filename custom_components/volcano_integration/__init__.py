@@ -4,7 +4,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .bluetooth_coordinator import VolcanoCoordinator
+from .bluetooth_coordinator import VolcanoBTManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up integration via YAML (if any) -- not used here."""
+    """Set up integration from YAML (not used here)."""
     return True
 
 
@@ -21,14 +21,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
-    coordinator = VolcanoCoordinator(hass)
-    await coordinator.async_config_entry_first_refresh()
+    manager = VolcanoBTManager()
+    manager.start(hass)  # <-- Start the continuous background loop
 
-    # Store the coordinator so sensors can access it
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    hass.data[DOMAIN][entry.entry_id] = manager
 
-    # Forward setup to the sensor platform
+    # Forward setup to sensor platform, so the sensor(s) can read data from manager
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -37,9 +36,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload the Volcano Integration."""
     _LOGGER.debug("Unloading Volcano Integration entry: %s", entry.entry_id)
 
-    coordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
-    if coordinator:
-        await coordinator.async_unload()
+    manager = hass.data[DOMAIN].pop(entry.entry_id, None)
+    if manager:
+        manager.stop()  # <-- Stop the continuous background loop
 
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return True
