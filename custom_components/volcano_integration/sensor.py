@@ -2,22 +2,20 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature
+from homeassistant.helpers.entity import EntityCategory
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "volcano_integration"
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """
-    Set up Volcano sensors for a config entry.
-    We assume `__init__.py` stored the manager in hass.data[DOMAIN][entry.entry_id].
-    """
+    """Set up Volcano sensors for a config entry."""
     _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
 
     manager = hass.data[DOMAIN][entry.entry_id]
-    
+
     entities = [
         VolcanoCurrentTempSensor(manager),
         VolcanoFanHeatControlSensor(manager),
@@ -26,17 +24,35 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
 
-class VolcanoCurrentTempSensor(SensorEntity):
-    """Numeric Temperature Sensor for the Volcano device."""
+class VolcanoBaseSensor(SensorEntity):
+    """
+    A base sensor to handle registration/unregistration with the manager.
+    We override `async_added_to_hass` and `async_will_remove_from_hass` to manage that.
+    """
 
     def __init__(self, manager):
         self._manager = manager
+
+    async def async_added_to_hass(self):
+        """Register sensor so manager can notify it of new data."""
+        _LOGGER.debug("Registering %s with VolcanoBTManager", self.name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister sensor when removed."""
+        _LOGGER.debug("Unregistering %s from VolcanoBTManager", self.name)
+        self._manager.unregister_sensor(self)
+
+
+class VolcanoCurrentTempSensor(VolcanoBaseSensor):
+    """Numeric Temperature Sensor for the Volcano device."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
         self._attr_name = "Volcano Current Temperature"
         self._attr_unique_id = "volcano_current_temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        # Mark entity category if desired, or leave it None
-        self._attr_entity_category = None
 
     @property
     def native_value(self):
@@ -45,45 +61,44 @@ class VolcanoCurrentTempSensor(SensorEntity):
 
     @property
     def available(self):
-        """Optional: consider this sensor 'available' only if BT is connected."""
+        """Consider sensor 'available' only if BT is connected."""
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoFanHeatControlSensor(SensorEntity):
+class VolcanoFanHeatControlSensor(VolcanoBaseSensor):
     """Sensor for the Volcano's Fan/Heat Control notifications."""
 
     def __init__(self, manager):
-        self._manager = manager
+        super().__init__(manager)
         self._attr_name = "Volcano Fan/Heat Control"
         self._attr_unique_id = "volcano_fan_heat_control"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self):
-        """Return the last received fan/heat notification text."""
+        """Return the last fan/heat notification text."""
         return self._manager.fan_heat_status
 
     @property
     def available(self):
-        """Same logic—optional."""
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoBTStatusSensor(SensorEntity):
+class VolcanoBTStatusSensor(VolcanoBaseSensor):
     """Sensor to display the current Bluetooth status/error string."""
 
     def __init__(self, manager):
-        self._manager = manager
+        super().__init__(manager)
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self):
-        """Return the manager's current bt_status."""
+        """Return the manager's current BT status."""
         return self._manager.bt_status
 
     @property
     def available(self):
-        # If you want this entity always shown, you can just return True:
+        """The status sensor is always available (even if it's an error)."""
         return True
