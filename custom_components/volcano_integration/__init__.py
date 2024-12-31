@@ -9,11 +9,11 @@ from .bluetooth_coordinator import VolcanoBTManager
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "volcano_integration"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "button"]  # <-- Add "button"
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up integration via YAML, if any (we won't use it here)."""
+    """Set up integration via YAML (if any)."""
     return True
 
 
@@ -21,15 +21,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
-    # Instantiate the manager (now named 'VolcanoBTManager' but in bluetooth_coordinator.py)
     manager = VolcanoBTManager()
     manager.start(hass)  # Start the continuous background loop
 
-    # Store it so sensors can access the manager
+    # Store manager so sensors AND buttons can access it
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
-    # Forward to the sensor platform
+    # Forward setup to the sensor & button platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -40,7 +39,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     manager = hass.data[DOMAIN].pop(entry.entry_id, None)
     if manager:
-        manager.stop()  # Stop the loop
+        manager.stop()
 
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return True
