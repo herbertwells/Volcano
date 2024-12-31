@@ -7,22 +7,29 @@ from bleak import BleakClient, BleakError
 _LOGGER = logging.getLogger(__name__)
 
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"
-UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c"
 
+# GATT UUIDs
+UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"     # Current Temperature
+UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c" # Fan/Heat Notifications
+
+# Wait 3 seconds between reconnect attempts
 RECONNECT_INTERVAL = 3
-POLL_INTERVAL = 1
+
+# Poll temperature every 0.5 seconds (twice a second)
+POLL_INTERVAL = 0.5
+
 
 class VolcanoBTManager:
     """
     Manages an ongoing background task to read temperature & subscribe to notifications
-    on a 1-second loop.
+    on a 0.5-second loop.
     """
 
     def __init__(self):
         self._client = None
         self._connected = False
 
+        # Shared data
         self.current_temperature = None
         self.fan_heat_status = None
         self.bt_status = "DISCONNECTED"
@@ -31,11 +38,11 @@ class VolcanoBTManager:
         self._task = None
         self._stop_event = asyncio.Event()
 
-        # List of sensors that want immediate updates
+        # Sensors that want immediate updates
         self._sensors = []
 
     def register_sensor(self, sensor_entity):
-        """Allow a sensor entity to register for immediate notifications."""
+        """Allow a sensor entity to register for immediate notifications (temperature/fan/heat)."""
         if sensor_entity not in self._sensors:
             self._sensors.append(sensor_entity)
 
@@ -51,23 +58,23 @@ class VolcanoBTManager:
         self._task = hass.loop.create_task(self._run())
 
     def stop(self):
-        """Stop the background loop by signaling the event and waiting for the task to end."""
+        """Stop the background loop by signaling the event."""
         _LOGGER.debug("VolcanoBTManager.stop() -> stopping background task.")
         if self._task and not self._task.done():
             self._stop_event.set()
 
     async def _run(self):
-        """Main loop: connect if needed, read temperature every second, handle reconnects."""
+        """Main loop: connect if needed, read temperature every 0.5 seconds, handle reconnects."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
             if not self._connected:
                 await self._connect()
 
             if self._connected:
-                # Try reading temperature
+                # Read temperature
                 await self._read_temperature()
 
-            # Wait 1 second, then do it again
+            # Sleep 0.5 seconds, then loop again
             await asyncio.sleep(POLL_INTERVAL)
 
         _LOGGER.debug("Exiting VolcanoBTManager._run() loop -> disconnecting.")
@@ -76,8 +83,9 @@ class VolcanoBTManager:
     async def _connect(self):
         """Attempt to connect to the device."""
         try:
+            _LOGGER.info("Connecting to BT device %s...", BT_DEVICE_ADDRESS)
             self.bt_status = "CONNECTING"
-            _LOGGER.info("Attempting connection to Bluetooth device %s", BT_DEVICE_ADDRESS)
+
             self._client = BleakClient(BT_DEVICE_ADDRESS)
             await self._client.connect()
 
@@ -85,40 +93,44 @@ class VolcanoBTManager:
             if self._connected:
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
                 self.bt_status = "CONNECTED"
+                # Subscribe for fan/heat notifications
                 await self._subscribe_notifications()
             else:
-                _LOGGER.warning("Connection to %s was not successful.", BT_DEVICE_ADDRESS)
+                _LOGGER.warning("Connection to %s was not successful. Retrying in %s sec...",
+                                BT_DEVICE_ADDRESS, RECONNECT_INTERVAL)
                 self.bt_status = "DISCONNECTED"
                 await asyncio.sleep(RECONNECT_INTERVAL)
 
         except BleakError as e:
             error_str = f"ERROR: {e}"
-            _LOGGER.error("Bluetooth connect error: %s", error_str)
+            _LOGGER.error("Bluetooth connect error: %s. Will retry in %s sec.", error_str, RECONNECT_INTERVAL)
             self.bt_status = error_str
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_notifications(self):
         """Subscribe to fan/heat notifications once we are connected."""
         if not self._connected or not self._client:
-            _LOGGER.error("Cannot subscribe to notifications: not connected.")
+            _LOGGER.error("Cannot subscribe to fan/heat notifications: not connected.")
             return
 
         def notification_handler(sender: int, data: bytearray):
             text = data.decode(errors="ignore")
-            _LOGGER.debug("Fan/Heat notification: sender=%s, data=%s, text='%s'", sender, data, text)
+            _LOGGER.debug("Fan/Heat notification -> sender=%s, raw_data=%s, text='%s'",
+                          sender, data, text)
             self.fan_heat_status = text
             self._notify_sensors()
 
         try:
-            _LOGGER.debug("Subscribing to notifications on UUID %s", UUID_FAN_HEAT)
+            _LOGGER.info("Subscribing to fan/heat notifications on UUID %s", UUID_FAN_HEAT)
             await self._client.start_notify(UUID_FAN_HEAT, notification_handler)
+            _LOGGER.debug("Fan/Heat subscription active.")
         except BleakError as e:
-            error_str = f"ERROR subscribing to notifications: {e}"
+            error_str = f"ERROR subscribing to fan/heat: {e}"
             _LOGGER.error(error_str)
             self.bt_status = error_str
 
     async def _read_temperature(self):
-        """Read the temperature characteristic every second."""
+        """Read the temperature characteristic every 0.5 seconds."""
         if not self._connected or not self._client:
             _LOGGER.debug("Not connected -> skipping temperature read.")
             return
@@ -128,9 +140,10 @@ class VolcanoBTManager:
             _LOGGER.debug("Read temperature raw bytes: %s", data.hex())
 
             if len(data) < 2:
-                _LOGGER.warning("Temperature data too short: %d bytes", len(data))
+                _LOGGER.warning("Temperature data too short: %d byte(s).", len(data))
                 self.current_temperature = None
             else:
+                # Parse first 2 bytes as 16-bit little-endian, then /10
                 raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
                 self.current_temperature = raw_16 / 10.0
                 _LOGGER.debug("Parsed temperature = %.1f °C (raw=%d)", self.current_temperature, raw_16)
@@ -146,15 +159,15 @@ class VolcanoBTManager:
     def _notify_sensors(self):
         """
         Informs any registered sensors that new data is available.
-        They can call `async_write_ha_state()` to update the UI immediately.
+        They call schedule_update_ha_state(True) to update the UI immediately.
         """
         for sensor_entity in self._sensors:
             sensor_entity.schedule_update_ha_state(True)
 
     async def _disconnect(self):
-        """Disconnect from the device so we can attempt to reconnect next cycle."""
+        """Disconnect from the device so we can attempt to reconnect on the next cycle."""
         if self._client:
-            _LOGGER.debug("Disconnecting Bluetooth client.")
+            _LOGGER.debug("Disconnecting from device %s.", BT_DEVICE_ADDRESS)
             try:
                 await self._client.disconnect()
             except BleakError as e:
@@ -163,4 +176,4 @@ class VolcanoBTManager:
         self._client = None
         self._connected = False
         self.bt_status = "DISCONNECTED"
-        _LOGGER.info("Disconnected from device. Will retry on next connect cycle.")
+        _LOGGER.info("Disconnected from Bluetooth device %s. Will retry later.", BT_DEVICE_ADDRESS)
