@@ -6,7 +6,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
 
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS  # Kept import for device identifiers
+from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",
-            "model": "Volcano Model",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
             "via_device": None,
         }
