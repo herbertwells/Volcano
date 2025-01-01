@@ -63,7 +63,6 @@ class VolcanoBTManager:
     """
 
     def __init__(self):
-        self._hass = None
         self._client = None
         self._connected = False
 
