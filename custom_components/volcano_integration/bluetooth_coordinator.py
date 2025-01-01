@@ -4,6 +4,7 @@
 - Fixes FutureWarnings by using property-based access.
 - Adds functionality to set heater temperature.
 - Handles Fan and Heat On/Off commands asynchronously.
+- Connection managed via Connect/Disconnect buttons.
 """
 
 import asyncio
@@ -49,7 +50,7 @@ VALID_PATTERNS = {
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
-    
+
     Responsibilities:
       - Connects to the device.
       - Polls temperature every 0.5 seconds.
@@ -88,18 +89,17 @@ class VolcanoBTManager:
         if sensor_entity in self._sensors:
             self._sensors.remove(sensor_entity)
 
-    def start(self, hass):
+    async def start(self):
         """Start the Bluetooth manager."""
-        _LOGGER.debug("VolcanoBTManager.start() -> creating background task.")
-        self._hass = hass
-        self._stop_event.clear()
-        self._task = hass.loop.create_task(self._run())
+        if not self._task or self._task.done():
+            self._stop_event.clear()
+            self._task = asyncio.create_task(self._run())
 
-    def stop(self):
+    async def stop(self):
         """Stop the Bluetooth manager."""
-        _LOGGER.debug("VolcanoBTManager.stop() -> stopping background task.")
         if self._task and not self._task.done():
             self._stop_event.set()
+            await self._task
 
     async def _run(self):
         """Main loop to manage Bluetooth connection and data polling."""
@@ -327,24 +327,13 @@ class VolcanoBTManager:
     # -------------------------------------------------------------------------
     async def async_user_connect(self):
         """Called when user presses 'Connect' button."""
-        _LOGGER.debug("User pressed Connect button -> re-connecting BLE.")
-        self.stop()
-        if self._task and not self._task.done():
-            _LOGGER.debug("Waiting for old task to finish before reconnect.")
-            await self._task
-
-        self._stop_event.clear()
-        self._task = self._hass.loop.create_task(self._run())
+        _LOGGER.debug("User pressed Connect button -> connecting BLE.")
+        await self.start()
 
     async def async_user_disconnect(self):
         """Called when user presses 'Disconnect' button."""
-        _LOGGER.debug("User pressed Disconnect button -> stopping BLE.")
-        self.stop()
-        if self._task and not self._task.done():
-            _LOGGER.debug("Waiting for old task to exit.")
-            await self._task
-
-        await self._disconnect()
+        _LOGGER.debug("User pressed Disconnect button -> disconnecting BLE.")
+        await self.stop()
         self.bt_status = "DISCONNECTED"
         _LOGGER.debug("Set bt_status to DISCONNECTED after user request.")
         self._notify_sensors()
