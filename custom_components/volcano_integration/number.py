@@ -11,6 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 MIN_TEMP = 40.0
 MAX_TEMP = 230.0
+DEFAULT_TEMP = 170.0
 STEP = 1.0  # 1 °C increments
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -29,7 +30,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
     def __init__(self, manager):
         self._manager = manager
         self._attr_name = "Volcano Heater Temperature Setpoint"
-        self._attr_unique_id = "volcano_heater_setpoint"
+        self._attr_unique_id = "volcano_heater_temperature_setpoint"
         self._attr_entity_category = EntityCategory.CONFIG
 
         # Set the allowed range
@@ -38,7 +39,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_step = STEP
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-        self._temp_value = MIN_TEMP  # Initialize to minimum
+        self._temp_value = DEFAULT_TEMP  # Initialize to default
 
     @property
     def native_value(self):
