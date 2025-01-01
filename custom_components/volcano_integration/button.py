@@ -1,10 +1,10 @@
-"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
+"""Platform for button integration. Adds Fan/Heat On/Off in addition to Connect/Disconnect."""
 import logging
 
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
 from .bluetooth_coordinator import (
-    UUID_FAN_ON, UUID_FAN_OFF,  # Renamed from PUMP_ON/OFF to FAN_ON/OFF
+    UUID_FAN_ON, UUID_FAN_OFF,
     UUID_HEAT_ON, UUID_HEAT_OFF
 )
 
