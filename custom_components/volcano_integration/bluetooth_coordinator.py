@@ -7,7 +7,6 @@
 - Connection managed via Connect/Disconnect buttons.
 - Implements services for button actions and set_temperature.
 """
-
 import asyncio
 import logging
 import time
@@ -78,8 +77,6 @@ class VolcanoBTManager:
         self._sensors = []
 
         self._last_rssi_time = 0.0
-
-        self.device_info = None
 
     def register_sensor(self, sensor_entity):
         """Register a sensor to receive updates."""
@@ -290,27 +287,6 @@ class VolcanoBTManager:
             _LOGGER.error("Error writing to %s: %s", write_uuid, e)
             self.bt_status = f"ERROR: {e}"
             self._notify_sensors()
-
-    # Fan and Heat control methods
-    async def fan_on(self):
-        """Turn fan on."""
-        _LOGGER.debug("Turning fan ON.")
-        await self.write_gatt_command(UUID_FAN_ON, payload=b"\x01")
-
-    async def fan_off(self):
-        """Turn fan off."""
-        _LOGGER.debug("Turning fan OFF.")
-        await self.write_gatt_command(UUID_FAN_OFF, payload=b"\x00")
-
-    async def heat_on(self):
-        """Turn heat on."""
-        _LOGGER.debug("Turning heat ON.")
-        await self.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
-
-    async def heat_off(self):
-        """Turn heat off."""
-        _LOGGER.debug("Turning heat OFF.")
-        await self.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
 
     # -------------------------------------------------------------------------
     # Set Heater Temperature (40–230 °C)
