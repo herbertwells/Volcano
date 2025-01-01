@@ -1,4 +1,4 @@
-"""Platform for sensor integration, now with fan renamed to fan and RSSI support."""
+"""Platform for sensor integration, now with fan renamed and RSSI support."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
