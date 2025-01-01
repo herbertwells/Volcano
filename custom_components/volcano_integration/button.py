@@ -2,11 +2,11 @@
 import logging
 
 from homeassistant.components.button import ButtonEntity
-from . import DOMAIN, BT_DEVICE_ADDRESS
-
+from . import DOMAIN
 from .bluetooth_coordinator import (
     UUID_FAN_ON, UUID_FAN_OFF,
     UUID_HEAT_ON, UUID_HEAT_OFF,
+    BT_DEVICE_ADDRESS,  # Added import
 )
 
 _LOGGER = logging.getLogger(__name__)
