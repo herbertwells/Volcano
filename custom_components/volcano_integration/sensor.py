@@ -31,6 +31,11 @@ class VolcanoBaseSensor(SensorEntity):
     def __init__(self, manager):
         self._manager = manager
 
+    @property
+    def device_info(self):
+        """Return device info for device registry."""
+        return self._manager.device_info
+
     async def async_added_to_hass(self):
         _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
         self._manager.register_sensor(self)
