@@ -5,7 +5,7 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
 
-from . import DOMAIN
+from . import DOMAIN, BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
