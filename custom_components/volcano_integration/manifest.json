@@ -1,7 +1,7 @@
 {
   "domain": "volcano_integration",
   "name": "Volcano Integration",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
   "requirements": [
     "bleak"
@@ -10,5 +10,6 @@
   "codeowners": ["@Chuffnugget"],
   "iot_class": "local_push",
   "config_flow": true,
-  "supports_entry_removal": true
+  "supports_entry_removal": true,
+  "logo": "images/logo.png"
 }
