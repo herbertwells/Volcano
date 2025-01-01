@@ -1,4 +1,4 @@
-custom_components/volcano_integration/__init__.py: """Volcano Integration for Home Assistant."""
+"""Volcano Integration for Home Assistant."""
 import logging
 import asyncio
 
