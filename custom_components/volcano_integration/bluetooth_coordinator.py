@@ -60,7 +60,7 @@ class VolcanoBTManager:
         self._sensors = []
 
         # Define UUIDs as instance attributes
-        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
+        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"                # Current Temperature
         self.UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
 
         # Pump Control UUIDs
@@ -271,4 +271,46 @@ class VolcanoBTManager:
     # -------------------------------------------------------------------------
     async def set_heater_temperature(self, temp_c: float):
         """
-        Write the temperature setpoint to the heater's GATT characteristic
+        Write the temperature setpoint to the heater's GATT characteristic (UUID_HEATER_SETPOINT).
+        Assumes a 16-bit little-endian integer representing tenths of degrees Celsius.
+        """
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set heater temperature - not connected.")
+            return
+
+        # Clamp the input between 40.0 and 230.0
+        safe_temp = max(40.0, min(temp_c, 230.0))
+        setpoint_int = int(safe_temp * 10)  # Store as tenths of a degree
+        setpoint_bytes = setpoint_int.to_bytes(2, byteorder="little", signed=False)
+
+        _LOGGER.debug(
+            "Writing heater temperature=%.1f °C -> raw=%s (hex=%s)",
+            safe_temp, setpoint_bytes, setpoint_bytes.hex()
+        )
+
+        try:
+            await self._client.write_gatt_char(self.UUID_HEATER_SETPOINT, setpoint_bytes)
+            _LOGGER.info(
+                "Heater setpoint updated to %.1f °C (raw %s) at UUID %s",
+                safe_temp, setpoint_bytes.hex(), self.UUID_HEATER_SETPOINT
+            )
+        except BleakError as e:
+            _LOGGER.error("Error writing heater temp: %s", e)
+            self.bt_status = f"ERROR: {e}"
+            self._notify_sensors()
+
+    # -------------------------------------------------------------------------
+    # Connect/Disconnect button methods
+    # -------------------------------------------------------------------------
+    async def async_user_connect(self):
+        """Called when user presses 'Connect' button."""
+        _LOGGER.debug("User pressed Connect button -> connecting BLE.")
+        await self.start()
+
+    async def async_user_disconnect(self):
+        """Called when user presses 'Disconnect' button."""
+        _LOGGER.debug("User pressed Disconnect button -> disconnecting BLE.")
+        await self.stop()
+        self.bt_status = "DISCONNECTED"
+        _LOGGER.debug("Set bt_status to DISCONNECTED after user request.")
+        self._notify_sensors()
