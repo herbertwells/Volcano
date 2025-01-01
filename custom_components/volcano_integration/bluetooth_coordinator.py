@@ -31,6 +31,7 @@ VALID_PATTERNS = {
     (0x23, 0x30): ("ON", "ON"),
 }
 
+
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
