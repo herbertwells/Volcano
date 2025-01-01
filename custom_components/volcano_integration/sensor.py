@@ -1,12 +1,12 @@
-"""Platform for sensor integration, now with fan renamed and RSSI support."""
+"""Platform for sensor integration."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.const import UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS
+from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS  # Kept import for device identifiers
+from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +21,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoHeatStatusSensor(manager),
         VolcanoFanStatusSensor(manager),
         VolcanoBTStatusSensor(manager),
-        VolcanoRSSISensor(manager),
     ]
     async_add_entities(entities)
 
@@ -53,10 +52,10 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",  # Replace with actual manufacturer
-            "model": "Volcano Model",           # Replace with actual model
-            "sw_version": "1.0.0",             # Replace with actual software version
-            "via_device": None,                # Replace if via another device
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
@@ -77,12 +76,11 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
         super().__init__(manager)
         self._attr_name = "Volcano Heat Status"
         self._attr_unique_id = "volcano_heat_status"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",
-            "model": "Volcano Model",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
             "via_device": None,
         }
@@ -105,12 +103,11 @@ class VolcanoFanStatusSensor(VolcanoBaseSensor):
         super().__init__(manager)
         self._attr_name = "Volcano Fan Status"
         self._attr_unique_id = "volcano_fan_status"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",
-            "model": "Volcano Model",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
             "via_device": None,
         }
@@ -133,12 +130,11 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
         super().__init__(manager)
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",
-            "model": "Volcano Model",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
             "via_device": None,
         }
@@ -153,33 +149,3 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
     def available(self):
         # Always show the BT Status sensor
         return True
-
-
-class VolcanoRSSISensor(VolcanoBaseSensor):
-    """Sensor that shows the device RSSI in dBm (updated every 60s)."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano RSSI"
-        self._attr_unique_id = "volcano_rssi"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "YourManufacturer",
-            "model": "Volcano Model",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def native_value(self):
-        val = self._manager.rssi
-        _LOGGER.debug("%s: native_value -> %s dBm", type(self).__name__, val)
-        return val
-
-    @property
-    def available(self):
-        """Available only if BLE is connected."""
-        return (self._manager.bt_status == "CONNECTED")
