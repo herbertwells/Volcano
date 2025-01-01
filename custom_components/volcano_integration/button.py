@@ -31,6 +31,7 @@ class VolcanoBaseButton(ButtonEntity):
     """Base button for the Volcano integration that references the BT manager."""
 
     def __init__(self, manager):
+        super().__init__()  # Removed passing manager
         self._manager = manager
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
@@ -132,6 +133,4 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_heat_off_button"
 
     async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
+        """Called when user
