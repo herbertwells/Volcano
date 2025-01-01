@@ -1,9 +1,9 @@
 """Bluetooth Coordinator for the Volcano Integration.
 
-- References to 'pump' changed to 'fan'.
+- References to 'fan' changed to 'pump'.
 - Fixes FutureWarnings by using property-based access.
 - Adds functionality to set heater temperature.
-- Handles Fan and Heat On/Off commands asynchronously.
+- Handles Pump and Heat On/Off commands asynchronously.
 - Connection managed via Connect/Disconnect buttons.
 - Implements services for button actions and set_temperature.
 """
@@ -19,9 +19,9 @@ BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # Timings
 RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
-POLL_INTERVAL = 0.5         # Seconds between temperature polls
+TEMP_POLL_INTERVAL = 1      # Seconds between temperature polls
 
-# Fan patterns: (heat_byte, fan_byte)
+# Pump patterns: (heat_byte, pump_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -36,9 +36,9 @@ class VolcanoBTManager:
 
     Responsibilities:
       - Connects to the device.
-      - Polls temperature every 0.5 seconds.
-      - Subscribes to fan notifications.
-      - Handles Fan and Heat On/Off commands.
+      - Polls temperature every TEMP_POLL_INTERVAL seconds.
+      - Subscribes to pump notifications.
+      - Handles Pump and Heat On/Off commands.
       - Allows setting the heater temperature.
       - Manages connection status and reconnection logic.
       - Provides services for button actions and set_temperature.
@@ -50,21 +50,22 @@ class VolcanoBTManager:
 
         self.current_temperature = None
         self.heat_state = None
-        self.fan_state = None
+        self.pump_state = None
 
         self.bt_status = "DISCONNECTED"
 
-        self._task = None
+        self._run_task = None
+        self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
 
         # Define UUIDs as instance attributes
         self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
-        self.UUID_FAN_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan Notifications
+        self.UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
 
-        # Fan Control UUIDs
-        self.UUID_FAN_ON = "10110013-5354-4f52-5a26-4249434b454c"
-        self.UUID_FAN_OFF = "10110014-5354-4f52-5a26-4249434b454c"
+        # Pump Control UUIDs
+        self.UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
+        self.UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
 
         # Heat Control UUIDs
         self.UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
@@ -85,28 +86,31 @@ class VolcanoBTManager:
 
     async def start(self):
         """Start the Bluetooth manager."""
-        if not self._task or self._task.done():
+        if not self._run_task or self._run_task.done():
             self._stop_event.clear()
-            self._task = asyncio.create_task(self._run())
+            self._run_task = asyncio.create_task(self._run())
+            self._temp_poll_task = asyncio.create_task(self._poll_temperature())
 
     async def stop(self):
         """Stop the Bluetooth manager."""
-        if self._task and not self._task.done():
+        if self._run_task and not self._run_task.done():
             self._stop_event.set()
-            await self._task
+            await self._run_task
+        if self._temp_poll_task and not self._temp_poll_task.done():
+            self._temp_poll_task.cancel()
+            try:
+                await self._temp_poll_task
+            except asyncio.CancelledError:
+                pass
 
     async def _run(self):
-        """Main loop to manage Bluetooth connection and data polling."""
+        """Main loop to manage Bluetooth connection."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
             if not self._connected:
                 await self._connect()
 
-            if self._connected:
-                # Poll temperature
-                await self._read_temperature()
-
-            await asyncio.sleep(POLL_INTERVAL)
+            await asyncio.sleep(1)  # Short sleep to prevent tight loop
 
         _LOGGER.debug("Exiting VolcanoBTManager._run() -> disconnecting.")
         await self._disconnect()
@@ -130,7 +134,7 @@ class VolcanoBTManager:
             if self._connected:
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
                 self.bt_status = "CONNECTED"
-                await self._subscribe_fan_notifications()
+                await self._subscribe_pump_notifications()
             else:
                 _LOGGER.warning(
                     "Connection to %s unsuccessful. Retrying in %s sec...",
@@ -148,50 +152,57 @@ class VolcanoBTManager:
             self.bt_status = err_str
             await asyncio.sleep(RECONNECT_INTERVAL)
 
-    async def _subscribe_fan_notifications(self):
-        """Subscribe to fan notifications (two-byte pattern)."""
+    async def _subscribe_pump_notifications(self):
+        """Subscribe to pump notifications (two-byte pattern)."""
         if not self._connected or not self._client:
-            _LOGGER.error("Cannot subscribe to fan notifications: not connected.")
+            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
             return
 
         def notification_handler(sender: int, data: bytearray):
-            _LOGGER.debug("Fan notification raw: %s", data.hex())
+            _LOGGER.debug("Pump notification raw: %s", data.hex())
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
                 _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
                 if (b1, b2) in VALID_PATTERNS:
-                    heat_val, fan_val = VALID_PATTERNS[(b1, b2)]
+                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
                     self.heat_state = heat_val
-                    self.fan_state = fan_val
+                    self.pump_state = pump_val
                     _LOGGER.debug(
-                        "Parsed fan => heat=%s, fan=%s (pattern=(0x%02x, 0x%02x))",
-                        heat_val, fan_val, b1, b2
+                        "Parsed pump => heat=%s, pump=%s (pattern=(0x%02x, 0x%02x))",
+                        heat_val, pump_val, b1, b2
                     )
                 else:
                     self.heat_state = "UNKNOWN"
-                    self.fan_state = "UNKNOWN"
+                    self.pump_state = "UNKNOWN"
                     _LOGGER.warning(
-                        "Unknown fan pattern (0x%02x, 0x%02x). Data received: %s",
+                        "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
                         b1, b2, data.hex()
                     )
             else:
                 self.heat_state = "UNKNOWN"
-                self.fan_state = "UNKNOWN"
-                _LOGGER.warning("Fan notification too short: %d byte(s).", len(data))
+                self.pump_state = "UNKNOWN"
+                _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
 
             self._notify_sensors()
 
         try:
-            _LOGGER.info("Subscribing to fan notifications on UUID %s", self.UUID_FAN_NOTIFICATIONS)
-            await self._client.start_notify(self.UUID_FAN_NOTIFICATIONS, notification_handler)
-            _LOGGER.debug("Fan subscription active.")
+            _LOGGER.info("Subscribing to pump notifications on UUID %s", self.UUID_PUMP_NOTIFICATIONS)
+            await self._client.start_notify(self.UUID_PUMP_NOTIFICATIONS, notification_handler)
+            _LOGGER.debug("Pump subscription active.")
         except BleakError as e:
-            err_str = f"ERROR subscribing to fan: {e}"
+            err_str = f"ERROR subscribing to pump: {e}"
             _LOGGER.error(err_str)
             self.bt_status = err_str
 
+    async def _poll_temperature(self):
+        """Poll temperature at regular intervals."""
+        while not self._stop_event.is_set():
+            if self._connected:
+                await self._read_temperature()
+            await asyncio.sleep(TEMP_POLL_INTERVAL)
+
     async def _read_temperature(self):
-        """Read the temperature characteristic every 0.5s."""
+        """Read the temperature characteristic."""
         if not self._connected or not self._client:
             _LOGGER.debug("Not connected -> skipping temperature read.")
             return
@@ -238,10 +249,10 @@ class VolcanoBTManager:
         _LOGGER.info("Disconnected from device %s.", BT_DEVICE_ADDRESS)
 
     # -------------------------------------------------------------------------
-    # Write GATT Command: Fan/Heat ON/OFF
+    # Write GATT Command: Pump/Heat ON/OFF
     # -------------------------------------------------------------------------
     async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
-        """Write a payload to a GATT characteristic to control Fan/Heat."""
+        """Write a payload to a GATT characteristic to control Pump/Heat."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
             return
