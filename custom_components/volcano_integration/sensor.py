@@ -2,7 +2,6 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
@@ -69,7 +68,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoHeatStatusSensor(VolcanoBaseSensor):
+class VolcanoHeatStatusSensor(SensorEntity):
     """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
@@ -96,7 +95,7 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoFanStatusSensor(VolcanoBaseSensor):
+class VolcanoFanStatusSensor(SensorEntity):
     """Fan Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
@@ -123,11 +122,11 @@ class VolcanoFanStatusSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoBTStatusSensor(VolcanoBaseSensor):
+class VolcanoBTStatusSensor(SensorEntity):
     """Sensor that shows the current Bluetooth status/error string."""
 
     def __init__(self, manager):
-        super().__init__(manager)
+        self._manager = manager
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_device_info = {
