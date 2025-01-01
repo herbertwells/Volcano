@@ -17,8 +17,8 @@ PLATFORMS = ["sensor", "button", "number"]
 # Define service names
 SERVICE_CONNECT = "connect"
 SERVICE_DISCONNECT = "disconnect"
-SERVICE_FAN_ON = "fan_on"
-SERVICE_FAN_OFF = "fan_off"
+SERVICE_PUMP_ON = "pump_on"
+SERVICE_PUMP_OFF = "pump_off"
 SERVICE_HEAT_ON = "heat_on"
 SERVICE_HEAT_OFF = "heat_off"
 SERVICE_SET_TEMPERATURE = "set_temperature"
@@ -55,15 +55,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.debug("Service 'disconnect' called.")
         await manager.async_user_disconnect()
 
-    async def handle_fan_on(call):
-        """Handle the fan_on service."""
-        _LOGGER.debug("Service 'fan_on' called.")
-        await manager.write_gatt_command(manager.UUID_FAN_ON, payload=b"\x01")
+    async def handle_pump_on(call):
+        """Handle the pump_on service."""
+        _LOGGER.debug("Service 'pump_on' called.")
+        await manager.write_gatt_command(manager.UUID_PUMP_ON, payload=b"\x01")
 
-    async def handle_fan_off(call):
-        """Handle the fan_off service."""
-        _LOGGER.debug("Service 'fan_off' called.")
-        await manager.write_gatt_command(manager.UUID_FAN_OFF, payload=b"\x00")
+    async def handle_pump_off(call):
+        """Handle the pump_off service."""
+        _LOGGER.debug("Service 'pump_off' called.")
+        await manager.write_gatt_command(manager.UUID_PUMP_OFF, payload=b"\x00")
 
     async def handle_heat_on(call):
         """Handle the heat_on service."""
@@ -106,14 +106,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.services.async_register(
         DOMAIN,
-        SERVICE_FAN_ON,
-        handle_fan_on,
+        SERVICE_PUMP_ON,
+        handle_pump_on,
     )
 
     hass.services.async_register(
         DOMAIN,
-        SERVICE_FAN_OFF,
-        handle_fan_off,
+        SERVICE_PUMP_OFF,
+        handle_pump_off,
     )
 
     hass.services.async_register(
@@ -135,6 +135,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         schema=SET_TEMPERATURE_SCHEMA,
     )
 
+    # Start the Bluetooth manager
+    await manager.start()
+
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -148,8 +151,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Unregister services
     hass.services.async_remove(DOMAIN, SERVICE_CONNECT)
     hass.services.async_remove(DOMAIN, SERVICE_DISCONNECT)
-    hass.services.async_remove(DOMAIN, SERVICE_FAN_ON)
-    hass.services.async_remove(DOMAIN, SERVICE_FAN_OFF)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_ON)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_OFF)
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_ON)
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_OFF)
     hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
