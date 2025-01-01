@@ -42,6 +42,11 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._temp_value = DEFAULT_TEMP  # Initialize to default
 
     @property
+    def device_info(self):
+        """Return device info for device registry."""
+        return self._manager.device_info
+
+    @property
     def native_value(self):
         """
         Return the current setpoint.
