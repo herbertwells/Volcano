@@ -1,4 +1,4 @@
-"""Platform for sensor integration, now with pump instead of fan and RSSI support."""
+"""Platform for sensor integration, now with pump renamed to fan and RSSI support."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
@@ -17,8 +17,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = [
         VolcanoCurrentTempSensor(manager),
-        VolcanoHeatSensor(manager),
-        VolcanoPumpSensor(manager),  # Changed from Fan to Pump
+        VolcanoHeatStatusSensor(manager),
+        VolcanoFanStatusSensor(manager),
         VolcanoBTStatusSensor(manager),
         VolcanoRSSISensor(manager),
     ]
@@ -61,13 +61,13 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoHeatSensor(VolcanoBaseSensor):
-    """Heat state (ON/OFF/UNKNOWN)."""
+class VolcanoHeatStatusSensor(VolcanoBaseSensor):
+    """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
-        self._attr_name = "Volcano Heat"
-        self._attr_unique_id = "volcano_heat"
+        self._attr_name = "Volcano Heat Status"
+        self._attr_unique_id = "volcano_heat_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -81,18 +81,18 @@ class VolcanoHeatSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoPumpSensor(VolcanoBaseSensor):
-    """Pump state (ON/OFF/UNKNOWN)."""
+class VolcanoFanStatusSensor(VolcanoBaseSensor):
+    """Fan Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
-        self._attr_name = "Volcano Pump"
-        self._attr_unique_id = "volcano_pump"
+        self._attr_name = "Volcano Fan Status"
+        self._attr_unique_id = "volcano_fan_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self):
-        val = self._manager.pump_state
+        val = self._manager.fan_state  # Renamed from pump_state to fan_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
