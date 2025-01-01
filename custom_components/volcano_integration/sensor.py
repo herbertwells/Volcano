@@ -69,12 +69,11 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoHeatStatusSensor(SensorEntity):
+class VolcanoHeatStatusSensor(VolcanoBaseSensor):
     """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
-        self._manager = manager
+        super().__init__(manager)
         self._attr_name = "Volcano Heat Status"
         self._attr_unique_id = "volcano_heat_status"
         self._attr_device_info = {
@@ -97,12 +96,11 @@ class VolcanoHeatStatusSensor(SensorEntity):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoPumpStatusSensor(SensorEntity):
+class VolcanoPumpStatusSensor(VolcanoBaseSensor):
     """Pump Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
-        self._manager = manager
+        super().__init__(manager)
         self._attr_name = "Volcano Pump Status"
         self._attr_unique_id = "volcano_pump_status"
         self._attr_device_info = {
@@ -125,12 +123,11 @@ class VolcanoPumpStatusSensor(SensorEntity):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoBTStatusSensor(SensorEntity):
+class VolcanoBTStatusSensor(VolcanoBaseSensor):
     """Sensor that shows the current Bluetooth status/error string."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
-        self._manager = manager
+        super().__init__(manager)
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_device_info = {
