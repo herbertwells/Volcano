@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"          # Current Temperature
+UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
 UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
 
 # Pump Control UUIDs
@@ -44,6 +44,7 @@ VALID_PATTERNS = {
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
 }
+
 
 class VolcanoBTManager:
     """
