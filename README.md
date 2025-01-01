@@ -17,35 +17,19 @@ A custom Home Assistant integration to monitor and control your Volcano heater v
 
 ## Installation
 
-1. **Download Integration:**
-   - Clone the repository:
-     ```bash
-     git clone https://github.com/YourUsername/volcano_integration.git
-     ```
-   - Or download the ZIP and extract it.
+1. **Add Integration via HACS:**
+   - Ensure you have [HACS](https://hacs.xyz/) installed.
+   - In Home Assistant, go to **HACS > Integrations**.
+   - Click **Browse & Add Repositories**.
+   - Search for "Volcano Integration" and add it.
 
-2. **Copy to Home Assistant:**
-   - Place the `volcano_integration` folder into your Home Assistant's `custom_components` directory:
-     ```
-     config/
-     └── custom_components/
-         └── volcano_integration/
-             ├── __init__.py
-             ├── bluetooth_coordinator.py
-             ├── sensor.py
-             ├── button.py
-             ├── number.py
-             └── manifest.json
-     ```
+2. **Dependencies Managed by HACS:**
+   - The integration requires `bleak>=0.20.0`.
+   - HACS will automatically install this dependency based on the `manifest.json`.
 
-3. **Install Dependencies:**
-   - Ensure `bleak` library is installed (version ≥ 0.20.0):
-     ```bash
-     pip install bleak>=0.20.0
-     ```
-
-4. **Restart Home Assistant:**
-   - Go to **Configuration > Server Controls** and click **Restart**.
+3. **Restart Home Assistant:**
+   - After installation, go to **Configuration > Server Controls**.
+   - Click **Restart** under **Server management**.
 
 ## Configuration
 
@@ -83,9 +67,10 @@ A custom Home Assistant integration to monitor and control your Volcano heater v
 ## Troubleshooting
 
 - **Slider Range Incorrect (0°C - 100°C):**
-  - Ensure `number.py` has `native_min_value` and `native_max_value` set to 40.0 and 230.0 respectively.
-  - Delete the existing number entity in Home Assistant and restart.
-  - Clear browser cache or use incognito mode.
+  - Ensure `manifest.json` includes `"bleak>=0.20.0"` under `requirements`.
+  - Create a new GitHub release/tag for the integration.
+  - Update the integration via HACS to trigger dependency installation.
+  - Clear browser cache or use an incognito window.
 
 - **Bluetooth Issues:**
   - Verify device MAC address in `bluetooth_coordinator.py`.
