@@ -28,6 +28,7 @@ class VolcanoBaseSensor(SensorEntity):
     """Base sensor that registers/unregisters with the VolcanoBTManager."""
 
     def __init__(self, manager):
+        super().__init__()  # Removed passing manager
         self._manager = manager
 
     async def async_added_to_hass(self):
@@ -72,7 +73,8 @@ class VolcanoHeatStatusSensor(SensorEntity):
     """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
-        super().__init__(manager)
+        super().__init__()  # Removed passing manager
+        self._manager = manager
         self._attr_name = "Volcano Heat Status"
         self._attr_unique_id = "volcano_heat_status"
         self._attr_device_info = {
@@ -99,7 +101,8 @@ class VolcanoFanStatusSensor(SensorEntity):
     """Fan Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
-        super().__init__(manager)
+        super().__init__()  # Removed passing manager
+        self._manager = manager
         self._attr_name = "Volcano Fan Status"
         self._attr_unique_id = "volcano_fan_status"
         self._attr_device_info = {
@@ -126,6 +129,7 @@ class VolcanoBTStatusSensor(SensorEntity):
     """Sensor that shows the current Bluetooth status/error string."""
 
     def __init__(self, manager):
+        super().__init__()  # Removed passing manager
         self._manager = manager
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
