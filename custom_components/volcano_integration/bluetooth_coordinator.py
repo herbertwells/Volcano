@@ -46,6 +46,7 @@ VALID_PATTERNS = {
     (0x23, 0x30): ("ON", "ON"),
 }
 
+
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
@@ -191,8 +192,8 @@ class VolcanoBTManager:
             self._notify_sensors()
 
         try:
-            _LOGGER.info("Subscribing to fan notifications on UUID %s", self.UUID_FAN_NOTIFICATIONS)
-            await self._client.start_notify(self.UUID_FAN_NOTIFICATIONS, notification_handler)
+            _LOGGER.info("Subscribing to fan notifications on UUID %s", UUID_FAN_NOTIFICATIONS)
+            await self._client.start_notify(UUID_FAN_NOTIFICATIONS, notification_handler)
             _LOGGER.debug("Fan subscription active.")
         except BleakError as e:
             err_str = f"ERROR subscribing to fan: {e}"
@@ -206,7 +207,7 @@ class VolcanoBTManager:
             return
 
         try:
-            data = await self._client.read_gatt_char(self.UUID_TEMP)
+            data = await self._client.read_gatt_char(UUID_TEMP)
             _LOGGER.debug("Read temperature raw bytes: %s", data.hex())
 
             if len(data) < 2:
@@ -311,10 +312,10 @@ class VolcanoBTManager:
         )
 
         try:
-            await self._client.write_gatt_char(self.UUID_HEATER_SETPOINT, setpoint_bytes)
+            await self._client.write_gatt_char(UUID_HEATER_SETPOINT, setpoint_bytes)
             _LOGGER.info(
                 "Heater setpoint updated to %.1f °C (raw %s) at UUID %s",
-                safe_temp, setpoint_bytes.hex(), self.UUID_HEATER_SETPOINT
+                safe_temp, setpoint_bytes.hex(), UUID_HEATER_SETPOINT
             )
         except BleakError as e:
             _LOGGER.error("Error writing heater temp: %s", e)
