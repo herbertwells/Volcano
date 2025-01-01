@@ -21,7 +21,6 @@ BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 # Timings
 RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
 POLL_INTERVAL = 0.5         # Seconds between temperature polls
-RSSI_INTERVAL = 60.0        # Seconds between RSSI readings
 
 # Fan patterns: (heat_byte, fan_byte)
 VALID_PATTERNS = {
@@ -31,7 +30,6 @@ VALID_PATTERNS = {
     (0x23, 0x30): ("ON", "ON"),
 }
 
-
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
@@ -40,7 +38,6 @@ class VolcanoBTManager:
       - Connects to the device.
       - Polls temperature every 0.5 seconds.
       - Subscribes to fan notifications.
-      - Reads RSSI every 60 seconds.
       - Handles Fan and Heat On/Off commands.
       - Allows setting the heater temperature.
       - Manages connection status and reconnection logic.
@@ -54,15 +51,12 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.fan_state = None
-        self.rssi = None
 
         self.bt_status = "DISCONNECTED"
 
         self._task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
-
-        self._last_rssi_time = 0.0
 
         # Define UUIDs as instance attributes
         self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
@@ -111,12 +105,6 @@ class VolcanoBTManager:
             if self._connected:
                 # Poll temperature
                 await self._read_temperature()
-
-                # Periodically read RSSI
-                now = time.time()
-                if (now - self._last_rssi_time) >= RSSI_INTERVAL:
-                    await self._read_rssi()
-                    self._last_rssi_time = now
 
             await asyncio.sleep(POLL_INTERVAL)
 
@@ -227,30 +215,6 @@ class VolcanoBTManager:
             _LOGGER.error("Error reading temperature: %s -> disconnect & retry...", e)
             self.bt_status = f"ERROR: {e}"
             await self._disconnect()
-
-    async def _read_rssi(self):
-        """Read the RSSI (dBm) every 60s, if supported by the backend."""
-        if not self._connected or not self._client:
-            _LOGGER.debug("Not connected -> skipping RSSI read.")
-            return
-
-        try:
-            rssi_val = self._client.rssi  # Use property instead of get_rssi()
-            _LOGGER.debug("Read RSSI = %s dBm", rssi_val)
-            self.rssi = rssi_val
-        except AttributeError as e_attr:
-            _LOGGER.debug("RSSI not available on this backend: %s", e_attr)
-            self.rssi = None
-        except BleakError as e:
-            _LOGGER.error("BleakError while reading RSSI: %s", e)
-            self.rssi = None
-
-        if self.rssi is not None:
-            _LOGGER.debug("RSSI successfully read: %s dBm", self.rssi)
-        else:
-            _LOGGER.debug("RSSI not supported or returned None.")
-
-        self._notify_sensors()
 
     def _notify_sensors(self):
         """Notify all registered sensors that new data is available."""
