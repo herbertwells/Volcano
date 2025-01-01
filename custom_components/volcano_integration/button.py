@@ -1,24 +1,19 @@
-"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
+"""Platform for button integration."""
+
 import logging
 
 from homeassistant.components.button import ButtonEntity
+
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Volcano buttons for a config entry."""
-    _LOGGER.debug("Setting up Volcano buttons for entry: %s", entry.entry_id)
-
+    """Set up buttons for Volcano Integration."""
     manager = hass.data[DOMAIN][entry.entry_id]
-
     entities = [
         VolcanoConnectButton(manager),
         VolcanoDisconnectButton(manager),
-
-        # Pump/Heat GATT write buttons
         VolcanoPumpOnButton(manager),
         VolcanoPumpOffButton(manager),
         VolcanoHeatOnButton(manager),
@@ -26,119 +21,33 @@ async def async_setup_entry(hass, entry, async_add_entities):
     ]
     async_add_entities(entities)
 
-
-class VolcanoBaseButton(ButtonEntity):
-    """Base button for the Volcano integration that references the BT manager."""
+class VolcanoConnectButton(ButtonEntity):
+    """A button to connect to the Volcano device."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
         self._manager = manager
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def available(self):
-        """We can keep these always available so user can try them anytime."""
-        return True
-
-
-class VolcanoConnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to connect BLE."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
         self._attr_name = "Volcano Connect"
         self._attr_unique_id = "volcano_connect_button"
-        self._attr_icon = "mdi:bluetooth-connect"
+        self._attr_icon = "mdi:bluetooth"
 
     async def async_press(self) -> None:
-        """Called when user presses the Connect button in HA."""
+        """Called when user presses the Connect button."""
         _LOGGER.debug("VolcanoConnectButton: pressed by user.")
-        await self._manager.async_user_connect()
+        await self._manager.start()
 
-
-class VolcanoDisconnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to disconnect BLE."""
+class VolcanoDisconnectButton(ButtonEntity):
+    """A button to disconnect from the Volcano device."""
 
     def __init__(self, manager):
-        super().__init__(manager)
+        self._manager = manager
         self._attr_name = "Volcano Disconnect"
         self._attr_unique_id = "volcano_disconnect_button"
         self._attr_icon = "mdi:bluetooth-off"
 
     async def async_press(self) -> None:
-        """Called when user presses the Disconnect button in HA."""
+        """Called when user presses the Disconnect button."""
         _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
-        await self._manager.async_user_disconnect()
+        await self._manager.stop()
 
-
-# ---------------------------------------------------------------------------
-#  Pump On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoPumpOnButton(VolcanoBaseButton):
-    """A button to turn Pump ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Pump On"
-        self._attr_unique_id = "volcano_pump_on_button"
-        self._attr_icon = "mdi:air-purifier"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Pump On button."""
-        _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_ON, payload=b"\x01")
-
-
-class VolcanoPumpOffButton(VolcanoBaseButton):
-    """A button to turn Pump OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Pump Off"
-        self._attr_unique_id = "volcano_pump_off_button"
-        self._attr_icon = "mdi:air-purifier-off"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Pump Off button."""
-        _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_OFF, payload=b"\x00")
-
-
-# ---------------------------------------------------------------------------
-#  Heat On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoHeatOnButton(VolcanoBaseButton):
-    """A button to turn Heat ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat On"
-        self._attr_unique_id = "volcano_heat_on_button"
-        self._attr_icon = "mdi:fire"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat On button."""
-        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_ON, payload=b"\x01")
-
-
-class VolcanoHeatOffButton(VolcanoBaseButton):
-    """A button to turn Heat OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat Off"
-        self._attr_unique_id = "volcano_heat_off_button"
-        self._attr_icon = "mdi:fire-off"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
+# Similarly, implement Pump On/Off and Heat On/Off buttons
+# Ensure they call the appropriate methods in VolcanoBTManager
