@@ -18,7 +18,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         VolcanoCurrentTempSensor(manager),
         VolcanoHeatStatusSensor(manager),
-        VolcanoFanStatusSensor(manager),
+        VolcanoPumpStatusSensor(manager),
         VolcanoBTStatusSensor(manager),
     ]
     async_add_entities(entities)
@@ -97,14 +97,14 @@ class VolcanoHeatStatusSensor(SensorEntity):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoFanStatusSensor(SensorEntity):
-    """Fan Status Sensor (ON/OFF/UNKNOWN)."""
+class VolcanoPumpStatusSensor(SensorEntity):
+    """Pump Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__()  # Removed passing manager
         self._manager = manager
-        self._attr_name = "Volcano Fan Status"
-        self._attr_unique_id = "volcano_fan_status"
+        self._attr_name = "Volcano Pump Status"
+        self._attr_unique_id = "volcano_pump_status"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
@@ -116,7 +116,7 @@ class VolcanoFanStatusSensor(SensorEntity):
 
     @property
     def native_value(self):
-        val = self._manager.fan_state
+        val = self._manager.pump_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
