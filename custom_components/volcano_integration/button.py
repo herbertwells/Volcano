@@ -21,7 +21,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoConnectButton(manager),
         VolcanoDisconnectButton(manager),
 
-        # NEW Fan/Heat GATT write buttons
+        # Fan/Heat GATT write buttons
         VolcanoFanOnButton(manager),
         VolcanoFanOffButton(manager),
         VolcanoHeatOnButton(manager),
@@ -71,7 +71,7 @@ class VolcanoDisconnectButton(VolcanoBaseButton):
 
 
 # ---------------------------------------------------------------------------
-#  NEW Fan On/Off
+#  Fan On/Off Buttons
 # ---------------------------------------------------------------------------
 class VolcanoFanOnButton(VolcanoBaseButton):
     """A button to turn Fan ON by writing to a GATT characteristic."""
@@ -102,7 +102,7 @@ class VolcanoFanOffButton(VolcanoBaseButton):
 
 
 # ---------------------------------------------------------------------------
-#  NEW Heat On/Off
+#  Heat On/Off Buttons
 # ---------------------------------------------------------------------------
 class VolcanoHeatOnButton(VolcanoBaseButton):
     """A button to turn Heat ON by writing to a GATT characteristic."""
