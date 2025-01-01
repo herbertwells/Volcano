@@ -6,7 +6,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS
 
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS  # Added import
+from .bluetooth_coordinator import BT_DEVICE_ADDRESS  # Kept import for device identifiers
 
 _LOGGER = logging.getLogger(__name__)
 
