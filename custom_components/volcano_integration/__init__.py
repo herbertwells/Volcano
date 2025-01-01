@@ -26,7 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         manager = VolcanoBTManager()
         hass.data[DOMAIN][entry.entry_id] = manager
 
-        await manager.start()
+        # Removed the automatic start to prevent Bluetooth connection on startup
+        # await manager.start()
 
         _LOGGER.info("Volcano Integration setup complete for entry: %s", entry.entry_id)
         return True  # Indicate successful setup
