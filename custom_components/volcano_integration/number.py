@@ -32,6 +32,14 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_name = "Volcano Heater Temperature Setpoint"
         self._attr_unique_id = "volcano_heater_temperature_setpoint"
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
         # Set the allowed range
         self._attr_native_min_value = MIN_TEMP
@@ -40,11 +48,6 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
         self._temp_value = DEFAULT_TEMP  # Initialize to default
-
-    @property
-    def device_info(self):
-        """Return device info for device registry."""
-        return self._manager.device_info
 
     @property
     def native_value(self):
