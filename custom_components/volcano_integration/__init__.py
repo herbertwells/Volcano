@@ -9,7 +9,7 @@ from .bluetooth_coordinator import VolcanoBTManager
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "volcano_integration"
-PLATFORMS = ["sensor", "button", "number"]  # Added "number"
+PLATFORMS = ["sensor", "button", "number"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up integration via YAML (if any)."""
@@ -20,8 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
     manager = VolcanoBTManager()
-    manager.start(hass)  # Start the continuous background loop
-
+    
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
@@ -35,7 +34,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     manager = hass.data[DOMAIN].pop(entry.entry_id, None)
     if manager:
-        manager.stop()
+        await manager.stop()
 
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return True
