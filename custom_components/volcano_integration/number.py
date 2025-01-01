@@ -30,13 +30,13 @@ class VolcanoHeaterTempNumber(NumberEntity):
     def __init__(self, manager):
         self._manager = manager
         self._attr_name = "Volcano Heater Temperature Setpoint"
-        self._attr_unique_id = "volcano_heater_setpoint"  # Reverted to original unique_id
+        self._attr_unique_id = "volcano_heater_temperature_setpoint"
         self._attr_entity_category = EntityCategory.CONFIG
 
         # Set the allowed range
-        self._attr_min_value = MIN_TEMP
-        self._attr_max_value = MAX_TEMP
-        self._attr_step = STEP
+        self._attr_native_min_value = MIN_TEMP
+        self._attr_native_max_value = MAX_TEMP
+        self._attr_native_step = STEP
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
         self._temp_value = DEFAULT_TEMP  # Initialize to default
