@@ -158,6 +158,7 @@ class VolcanoBTManager:
             _LOGGER.debug("Fan notification raw: %s", data.hex())
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
+                _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
                 if (b1, b2) in VALID_PATTERNS:
                     heat_val, fan_val = VALID_PATTERNS[(b1, b2)]
                     self.heat_state = heat_val
@@ -170,7 +171,8 @@ class VolcanoBTManager:
                     self.heat_state = "UNKNOWN"
                     self.fan_state = "UNKNOWN"
                     _LOGGER.warning(
-                        "Unknown fan pattern (0x%02x, 0x%02x).", b1, b2
+                        "Unknown fan pattern (0x%02x, 0x%02x). Data received: %s",
+                        b1, b2, data.hex()
                     )
             else:
                 self.heat_state = "UNKNOWN"
