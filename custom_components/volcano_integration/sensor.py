@@ -1,4 +1,4 @@
-"""Platform for sensor integration, now including an RSSI sensor."""
+"""Platform for sensor integration, now with pump instead of fan and RSSI support."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
@@ -9,7 +9,6 @@ from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano sensors for a config entry."""
     _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
@@ -19,9 +18,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         VolcanoCurrentTempSensor(manager),
         VolcanoHeatSensor(manager),
-        VolcanoFanSensor(manager),
+        VolcanoPumpSensor(manager),  # Changed from Fan to Pump
         VolcanoBTStatusSensor(manager),
-        VolcanoRSSISensor(manager),  # <--- NEW RSSI sensor
+        VolcanoRSSISensor(manager),
     ]
     async_add_entities(entities)
 
@@ -63,7 +62,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
 
 class VolcanoHeatSensor(VolcanoBaseSensor):
-    """Heat state (ON/OFF) from the left byte in notifications."""
+    """Heat state (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -82,18 +81,18 @@ class VolcanoHeatSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoFanSensor(VolcanoBaseSensor):
-    """Fan state (ON/OFF) from the right byte in notifications."""
+class VolcanoPumpSensor(VolcanoBaseSensor):
+    """Pump state (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
-        self._attr_name = "Volcano Fan"
-        self._attr_unique_id = "volcano_fan"
+        self._attr_name = "Volcano Pump"
+        self._attr_unique_id = "volcano_pump"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self):
-        val = self._manager.fan_state
+        val = self._manager.pump_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
@@ -103,7 +102,7 @@ class VolcanoFanSensor(VolcanoBaseSensor):
 
 
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
-    """Sensor that shows the current BT status/error string."""
+    """Sensor that shows the current Bluetooth status/error string."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -142,7 +141,5 @@ class VolcanoRSSISensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        # If device is disconnected, you won't get new RSSI. 
-        # But we can still show the last known value or None.
-        # Let's consider it "unavailable" if not connected.
+        """Available only if BLE is connected."""
         return (self._manager.bt_status == "CONNECTED")
