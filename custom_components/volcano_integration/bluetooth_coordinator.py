@@ -9,7 +9,6 @@
 """
 import asyncio
 import logging
-import time
 
 from bleak import BleakClient, BleakError
 
@@ -29,6 +28,7 @@ VALID_PATTERNS = {
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
 }
+
 
 class VolcanoBTManager:
     """
