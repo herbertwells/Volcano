@@ -84,7 +84,7 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
     async def async_press(self) -> None:
         """Called when user presses the Pump On button."""
         _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_PUMP_ON)
+        await self._manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
 
 
 class VolcanoPumpOffButton(VolcanoBaseButton):
@@ -98,7 +98,7 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
     async def async_press(self) -> None:
         """Called when user presses the Pump Off button."""
         _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_PUMP_OFF)
+        await self._manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
     async def async_press(self) -> None:
         """Called when user presses the Heat On button."""
         _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_ON)
+        await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
 
 
 class VolcanoHeatOffButton(VolcanoBaseButton):
@@ -129,4 +129,4 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
     async def async_press(self) -> None:
         """Called when user presses the Heat Off button."""
         _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_OFF)
+        await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
