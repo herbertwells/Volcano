@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 MIN_TEMP = 40.0
 MAX_TEMP = 230.0
-STEP = 1.0  # 1 °C increments, or you can do 0.5 if desired
+STEP = 1.0  # 1 °C increments
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano temperature number for a config entry."""
@@ -38,20 +38,18 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_step = STEP
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-        self._temp_value = 40.0  # default to min or anything you like
+        self._temp_value = MIN_TEMP  # Initialize to minimum
 
     @property
     def native_value(self):
         """
-        Return the current setpoint we *think* we have. 
-        If the device doesn't confirm, we only track our last set value.
+        Return the current setpoint.
         """
         return self._temp_value
 
     async def async_set_native_value(self, value: float) -> None:
         """
-        Called when the user moves the slider or sets a value from 40–230 in HA UI.
-        We clamp it and call manager.set_heater_temperature(value).
+        Called when the user sets a new temperature in the HA UI.
         """
         clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
         _LOGGER.debug(
@@ -60,11 +58,10 @@ class VolcanoHeaterTempNumber(NumberEntity):
         )
         self._temp_value = clamped_val
 
-        # Fire the BLE write to the device
+        # Write the setpoint to the device
         await self._manager.set_heater_temperature(clamped_val)
 
-        # We can store this locally; the device doesn't confirm the setpoint 
-        # unless you read it back from a GATT char. 
+        # Update the state in HA
         self.async_write_ha_state()
 
     @property
