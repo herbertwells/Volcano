@@ -3,6 +3,7 @@
   "name": "Volcano Integration",
   "version": "1.5.1",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
+  "issue_tracker": "https://github.com/Chuffnugget/volcano_integration/issues",
   "requirements": [
     "bleak>=0.20.0"
   ],
