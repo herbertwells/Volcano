@@ -1,8 +1,9 @@
 """Bluetooth Coordinator for the Volcano Integration.
 
-- References to 'fan' changed to 'pump'
-- Adds a write_gatt_char for setting heater temperature (UUID=10110003-...).
-- Still uses older 'await is_connected()' and 'await get_services()' with FutureWarnings.
+- References to 'fan' changed to 'pump'.
+- Fixes RSSI reading using property-based access to avoid FutureWarnings.
+- Adds a method to set heater temperature.
+- Handles write commands for Pump and Heat On/Off.
 """
 
 import asyncio
@@ -13,25 +14,26 @@ from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
 
+# Change this to your device's MAC address
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
 UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"       # Current Temperature
-UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump notifications (was fan)
+UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump notifications
 UUID_PUMP_ON  = "10110013-5354-4f52-5a26-4249434b454c"
 UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
 UUID_HEAT_ON  = "1011000f-5354-4f52-5a26-4249434b454c"
 UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
 
-# **NEW**: Heater setpoint write UUID
+# NEW: Heater setpoint write UUID
 UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
 # Timings
-RECONNECT_INTERVAL = 3
-POLL_INTERVAL = 0.5
-RSSI_INTERVAL = 60.0
+RECONNECT_INTERVAL = 3      # 3s before reconnect attempts
+POLL_INTERVAL = 0.5         # 0.5s for temperature
+RSSI_INTERVAL = 60.0        # 60s for RSSI
 
-# Pump patterns (was fan) for the 2 bytes: (heat_byte, pump_byte)
+# Pump patterns for the 2 bytes: (heat_byte, pump_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -42,12 +44,14 @@ VALID_PATTERNS = {
 
 class VolcanoBTManager:
     """
-    Background loop that:
-     - Polls temperature every 0.5s
-     - Subscribes to pump notifications
-     - Reads RSSI every 60s (if supported)
-     - Exposes write_gatt_command() for Pump/Heat On/Off
-     - **New**: set_heater_temperature() to write a setpoint (range 40–230).
+    Manages:
+      - A background loop that polls temperature every 0.5s
+      - Subscribes to pump notifications
+      - Reads RSSI every 60s (if supported by the backend)
+      - Exposes write_gatt_command() for Pump/Heat On/Off
+      - Provides user connect/disconnect methods
+      - Adds set_heater_temperature() to set the heater's temperature
+      - Uses property-based access to avoid FutureWarnings
     """
 
     def __init__(self):
@@ -57,7 +61,7 @@ class VolcanoBTManager:
 
         self.current_temperature = None
         self.heat_state = None
-        self.pump_state = None  # was fan_state
+        self.pump_state = None
         self.rssi = None
 
         self.bt_status = "DISCONNECTED"
@@ -69,25 +73,30 @@ class VolcanoBTManager:
         self._last_rssi_time = 0.0
 
     def register_sensor(self, sensor_entity):
+        """Register a sensor so it can be notified of new data."""
         if sensor_entity not in self._sensors:
             self._sensors.append(sensor_entity)
 
     def unregister_sensor(self, sensor_entity):
+        """Unregister a sensor."""
         if sensor_entity in self._sensors:
             self._sensors.remove(sensor_entity)
 
     def start(self, hass):
+        """Start the manager in Home Assistant's event loop."""
         _LOGGER.debug("VolcanoBTManager.start() -> creating background task.")
         self._hass = hass
         self._stop_event.clear()
         self._task = hass.loop.create_task(self._run())
 
     def stop(self):
+        """Stop the background loop by setting the stop_event."""
         _LOGGER.debug("VolcanoBTManager.stop() -> stopping background task.")
         if self._task and not self._task.done():
             self._stop_event.set()
 
     async def _run(self):
+        """Main loop: connect if needed, poll temperature, handle RSSI, etc."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
             if not self._connected:
@@ -105,20 +114,24 @@ class VolcanoBTManager:
 
             await asyncio.sleep(POLL_INTERVAL)
 
-        _LOGGER.debug("Exiting VolcanoBTManager._run() loop -> disconnecting.")
+        _LOGGER.debug("Exiting VolcanoBTManager._run() -> disconnecting.")
         await self._disconnect()
 
     async def _connect(self):
-        """Attempt to connect to the BLE device (await is_connected() approach)."""
+        """Attempt to connect to the BLE device using property-based access."""
         try:
             _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
             self.bt_status = "CONNECTING"
 
             self._client = BleakClient(BT_DEVICE_ADDRESS)
             await self._client.connect()
-            await self._client.get_services()  # triggers FutureWarning, but helps on HA OS
 
-            self._connected = await self._client.is_connected()  # triggers FutureWarning
+            # Access services property to ensure discovery
+            services = self._client.services
+            _LOGGER.debug("Services discovered: %s", services)
+
+            # Use property instead of await for is_connected
+            self._connected = self._client.is_connected
 
             if self._connected:
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
@@ -142,7 +155,7 @@ class VolcanoBTManager:
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_pump_notifications(self):
-        """Subscribe to the pump notifications (2-byte pattern)."""
+        """Subscribe to pump notifications (two-byte pattern)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
             return
@@ -216,28 +229,30 @@ class VolcanoBTManager:
             return
 
         try:
-            rssi_val = await self._client.get_rssi()
-        except (AttributeError, NotImplementedError) as e_attr:
-            _LOGGER.debug("get_rssi() not implemented: %s", e_attr)
-            rssi_val = None
-        except BleakError as e:
-            _LOGGER.error("BleakError while reading RSSI: %s", e)
-            rssi_val = None
-
-        if rssi_val is not None:
+            rssi_val = self._client.rssi  # Use property instead of get_rssi()
             _LOGGER.debug("Read RSSI = %s dBm", rssi_val)
             self.rssi = rssi_val
-        else:
+        except AttributeError as e_attr:
+            _LOGGER.debug("RSSI not available on this backend: %s", e_attr)
             self.rssi = None
+        except BleakError as e:
+            _LOGGER.error("BleakError while reading RSSI: %s", e)
+            self.rssi = None
+
+        if self.rssi is not None:
+            _LOGGER.debug("RSSI successfully read: %s dBm", self.rssi)
+        else:
             _LOGGER.debug("RSSI not supported or returned None.")
 
         self._notify_sensors()
 
     def _notify_sensors(self):
+        """Notify all registered sensors that new data is available."""
         for sensor_entity in self._sensors:
             sensor_entity.schedule_update_ha_state(True)
 
     async def _disconnect(self):
+        """Disconnect from the BLE device so we can attempt to reconnect next cycle."""
         if self._client:
             _LOGGER.debug("Disconnecting from device %s.", BT_DEVICE_ADDRESS)
             try:
@@ -269,23 +284,20 @@ class VolcanoBTManager:
             self._notify_sensors()
 
     # -------------------------------------------------------------------------
-    # **NEW**: Set Heater Temperature (40–230)
+    # Set Heater Temperature (40–230 °C)
     # -------------------------------------------------------------------------
     async def set_heater_temperature(self, temp_c: float):
         """
         Write the temperature setpoint to the heater's GATT characteristic (UUID_HEATER_SETPOINT).
-        We'll assume it's a 16-bit int in tenths of a degree, like the other code.
-
-        E.g., 40.0 -> b"\x90\x00"  (i.e. 400 in 16-bit little-endian)
-              230.0 -> b"\x06\x09" (2300 in decimal)
+        Assumes a 16-bit little-endian integer representing tenths of degrees.
         """
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set heater temperature - not connected.")
             return
 
-        # Clamp the input 40.0–230.0
+        # Clamp the input between 40.0 and 230.0
         safe_temp = max(40.0, min(temp_c, 230.0))
-        setpoint_int = int(safe_temp * 10)  # store as tenths
+        setpoint_int = int(safe_temp * 10)  # Store as tenths of a degree
         setpoint_bytes = setpoint_int.to_bytes(2, byteorder="little", signed=False)
 
         _LOGGER.debug(
@@ -308,7 +320,7 @@ class VolcanoBTManager:
     # Connect/Disconnect button methods
     # -------------------------------------------------------------------------
     async def async_user_connect(self):
-        """User pressed 'Connect' button."""
+        """Called when user presses 'Connect' button."""
         _LOGGER.debug("User pressed Connect button -> re-connecting BLE.")
         self.stop()
         if self._task and not self._task.done():
@@ -319,7 +331,7 @@ class VolcanoBTManager:
         self._task = self._hass.loop.create_task(self._run())
 
     async def async_user_disconnect(self):
-        """User pressed 'Disconnect' button."""
+        """Called when user presses 'Disconnect' button."""
         _LOGGER.debug("User pressed Disconnect button -> stopping BLE.")
         self.stop()
         if self._task and not self._task.done():
