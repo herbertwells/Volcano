@@ -1,4 +1,4 @@
-"""Platform for sensor integration, now with pump renamed to fan and RSSI support."""
+"""Platform for sensor integration, now with fan renamed to fan and RSSI support."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
@@ -92,7 +92,7 @@ class VolcanoFanStatusSensor(VolcanoBaseSensor):
 
     @property
     def native_value(self):
-        val = self._manager.fan_state  # Renamed from pump_state to fan_state
+        val = self._manager.fan_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
