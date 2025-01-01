@@ -1,11 +1,10 @@
 """Bluetooth Coordinator for the Volcano Integration.
 
-- References to 'fan' changed to 'pump'.
+- References to 'pump' changed to 'fan'.
 - Fixes FutureWarnings by using property-based access.
 - Adds functionality to set heater temperature.
-- Handles Pump and Heat On/Off commands asynchronously.
+- Handles Fan and Heat On/Off commands asynchronously.
 """
-
 import asyncio
 import logging
 import time
@@ -19,11 +18,11 @@ BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
 UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
-UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
+UUID_FAN_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan Notifications
 
-# Pump Control UUIDs
-UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
-UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
+# Fan Control UUIDs
+UUID_FAN_ON = "10110013-5354-4f52-5a26-4249434b454c"
+UUID_FAN_OFF = "10110014-5354-4f52-5a26-4249434b454c"
 
 # Heat Control UUIDs
 UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
@@ -37,7 +36,7 @@ RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
 POLL_INTERVAL = 0.5         # Seconds between temperature polls
 RSSI_INTERVAL = 60.0        # Seconds between RSSI readings
 
-# Pump patterns: (heat_byte, pump_byte)
+# Fan patterns: (heat_byte, fan_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -53,9 +52,9 @@ class VolcanoBTManager:
     Responsibilities:
       - Connects to the device.
       - Polls temperature every 0.5 seconds.
-      - Subscribes to pump notifications.
+      - Subscribes to fan notifications.
       - Reads RSSI every 60 seconds.
-      - Handles Pump and Heat On/Off commands.
+      - Handles Fan and Heat On/Off commands.
       - Allows setting the heater temperature.
       - Manages connection status and reconnection logic.
     """
@@ -67,7 +66,7 @@ class VolcanoBTManager:
 
         self.current_temperature = None
         self.heat_state = None
-        self.pump_state = None
+        self.fan_state = None
         self.rssi = None
 
         self.bt_status = "DISCONNECTED"
@@ -142,7 +141,7 @@ class VolcanoBTManager:
             if self._connected:
                 _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
                 self.bt_status = "CONNECTED"
-                await self._subscribe_pump_notifications()
+                await self._subscribe_fan_notifications()
             else:
                 _LOGGER.warning(
                     "Connection to %s unsuccessful. Retrying in %s sec...",
@@ -160,43 +159,43 @@ class VolcanoBTManager:
             self.bt_status = err_str
             await asyncio.sleep(RECONNECT_INTERVAL)
 
-    async def _subscribe_pump_notifications(self):
-        """Subscribe to pump notifications (two-byte pattern)."""
+    async def _subscribe_fan_notifications(self):
+        """Subscribe to fan notifications (two-byte pattern)."""
         if not self._connected or not self._client:
-            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
+            _LOGGER.error("Cannot subscribe to fan notifications: not connected.")
             return
 
         def notification_handler(sender: int, data: bytearray):
-            _LOGGER.debug("Pump notification raw: %s", data.hex())
+            _LOGGER.debug("Fan notification raw: %s", data.hex())
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
                 if (b1, b2) in VALID_PATTERNS:
-                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
+                    heat_val, fan_val = VALID_PATTERNS[(b1, b2)]
                     self.heat_state = heat_val
-                    self.pump_state = pump_val
+                    self.fan_state = fan_val
                     _LOGGER.debug(
-                        "Parsed pump => heat=%s, pump=%s (pattern=(0x%02x, 0x%02x))",
-                        heat_val, pump_val, b1, b2
+                        "Parsed fan => heat=%s, fan=%s (pattern=(0x%02x, 0x%02x))",
+                        heat_val, fan_val, b1, b2
                     )
                 else:
                     self.heat_state = "UNKNOWN"
-                    self.pump_state = "UNKNOWN"
+                    self.fan_state = "UNKNOWN"
                     _LOGGER.warning(
-                        "Unknown pump pattern (0x%02x, 0x%02x).", b1, b2
+                        "Unknown fan pattern (0x%02x, 0x%02x).", b1, b2
                     )
             else:
                 self.heat_state = "UNKNOWN"
-                self.pump_state = "UNKNOWN"
-                _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
+                self.fan_state = "UNKNOWN"
+                _LOGGER.warning("Fan notification too short: %d byte(s).", len(data))
 
             self._notify_sensors()
 
         try:
-            _LOGGER.info("Subscribing to pump notifications on UUID %s", UUID_PUMP_NOTIFICATIONS)
-            await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
-            _LOGGER.debug("Pump subscription active.")
+            _LOGGER.info("Subscribing to fan notifications on UUID %s", UUID_FAN_NOTIFICATIONS)
+            await self._client.start_notify(UUID_FAN_NOTIFICATIONS, notification_handler)
+            _LOGGER.debug("Fan subscription active.")
         except BleakError as e:
-            err_str = f"ERROR subscribing to pump: {e}"
+            err_str = f"ERROR subscribing to fan: {e}"
             _LOGGER.error(err_str)
             self.bt_status = err_str
 
@@ -272,10 +271,10 @@ class VolcanoBTManager:
         _LOGGER.info("Disconnected from device %s.", BT_DEVICE_ADDRESS)
 
     # -------------------------------------------------------------------------
-    # Write GATT Command: Pump/Heat ON/OFF
+    # Write GATT Command: Fan/Heat ON/OFF
     # -------------------------------------------------------------------------
     async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
-        """Write a payload to a GATT characteristic to control Pump/Heat."""
+        """Write a payload to a GATT characteristic to control Fan/Heat."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
             return
