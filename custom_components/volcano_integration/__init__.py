@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
-from .bluetooth_coordinator import VolcanoBTManager
+from .bluetooth_coordinator import VolcanoBTManager, BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,22 +58,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_fan_on(call):
         """Handle the fan_on service."""
         _LOGGER.debug("Service 'fan_on' called.")
-        await manager.write_gatt_command(UUID_FAN_ON, payload=b"\x01")
+        await manager.write_gatt_command(manager.UUID_FAN_ON, payload=b"\x01")
 
     async def handle_fan_off(call):
         """Handle the fan_off service."""
         _LOGGER.debug("Service 'fan_off' called.")
-        await manager.write_gatt_command(UUID_FAN_OFF, payload=b"\x00")
+        await manager.write_gatt_command(manager.UUID_FAN_OFF, payload=b"\x00")
 
     async def handle_heat_on(call):
         """Handle the heat_on service."""
         _LOGGER.debug("Service 'heat_on' called.")
-        await manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
+        await manager.write_gatt_command(manager.UUID_HEAT_ON, payload=b"\x01")
 
     async def handle_heat_off(call):
         """Handle the heat_off service."""
         _LOGGER.debug("Service 'heat_off' called.")
-        await manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
+        await manager.write_gatt_command(manager.UUID_HEAT_OFF, payload=b"\x00")
 
     async def handle_set_temperature(call):
         """Handle the set_temperature service."""
