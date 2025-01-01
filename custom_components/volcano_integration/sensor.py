@@ -1,41 +1,83 @@
-"""Platform for button integration. Adds Fan/Heat On/Off in addition to Connect/Disconnect."""
+"""Platform for sensor integration, now with fan renamed and RSSI support."""
 import logging
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS
+
 from . import DOMAIN
-from .bluetooth_coordinator import (
-    UUID_FAN_ON, UUID_FAN_OFF,
-    UUID_HEAT_ON, UUID_HEAT_OFF,
-    BT_DEVICE_ADDRESS,  # Added import
-)
+from .bluetooth_coordinator import BT_DEVICE_ADDRESS  # Added import
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Volcano buttons for a config entry."""
-    _LOGGER.debug("Setting up Volcano buttons for entry: %s", entry.entry_id)
+    """Set up Volcano sensors for a config entry."""
+    _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
-        VolcanoConnectButton(manager),
-        VolcanoDisconnectButton(manager),
-
-        # Fan/Heat GATT write buttons
-        VolcanoFanOnButton(manager),
-        VolcanoFanOffButton(manager),
-        VolcanoHeatOnButton(manager),
-        VolcanoHeatOffButton(manager),
+        VolcanoCurrentTempSensor(manager),
+        VolcanoHeatStatusSensor(manager),
+        VolcanoFanStatusSensor(manager),
+        VolcanoBTStatusSensor(manager),
+        VolcanoRSSISensor(manager),
     ]
     async_add_entities(entities)
 
 
-class VolcanoBaseButton(ButtonEntity):
-    """Base button for the Volcano integration that references the BT manager."""
+class VolcanoBaseSensor(SensorEntity):
+    """Base sensor that registers/unregisters with the VolcanoBTManager."""
 
     def __init__(self, manager):
         self._manager = manager
+
+    async def async_added_to_hass(self):
+        _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        _LOGGER.debug("%s: removing from hass -> unregistering sensor.", type(self).__name__)
+        self._manager.unregister_sensor(self)
+
+
+class VolcanoCurrentTempSensor(VolcanoBaseSensor):
+    """Numeric Temperature Sensor (°C)."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Current Temperature"
+        self._attr_unique_id = "volcano_current_temperature"
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",  # Replace with actual manufacturer
+            "model": "Volcano Model",           # Replace with actual model
+            "sw_version": "1.0.0",             # Replace with actual software version
+            "via_device": None,                # Replace if via another device
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.current_temperature
+        _LOGGER.debug("%s: native_value -> %s °C", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        return (self._manager.bt_status == "CONNECTED")
+
+
+class VolcanoHeatStatusSensor(VolcanoBaseSensor):
+    """Heat Status Sensor (ON/OFF/UNKNOWN)."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Heat Status"
+        self._attr_unique_id = "volcano_heat_status"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
@@ -46,96 +88,98 @@ class VolcanoBaseButton(ButtonEntity):
         }
 
     @property
+    def native_value(self):
+        val = self._manager.heat_state
+        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
+        return val
+
+    @property
     def available(self):
-        """We can keep these always available so user can try them anytime."""
+        return (self._manager.bt_status == "CONNECTED")
+
+
+class VolcanoFanStatusSensor(VolcanoBaseSensor):
+    """Fan Status Sensor (ON/OFF/UNKNOWN)."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Fan Status"
+        self._attr_unique_id = "volcano_fan_status"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.fan_state
+        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        return (self._manager.bt_status == "CONNECTED")
+
+
+class VolcanoBTStatusSensor(VolcanoBaseSensor):
+    """Sensor that shows the current Bluetooth status/error string."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Bluetooth Status"
+        self._attr_unique_id = "volcano_bt_status"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.bt_status
+        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        # Always show the BT Status sensor
         return True
 
 
-class VolcanoConnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to connect BLE."""
+class VolcanoRSSISensor(VolcanoBaseSensor):
+    """Sensor that shows the device RSSI in dBm (updated every 60s)."""
 
     def __init__(self, manager):
         super().__init__(manager)
-        self._attr_name = "Volcano Connect"
-        self._attr_unique_id = "volcano_connect_button"
+        self._attr_name = "Volcano RSSI"
+        self._attr_unique_id = "volcano_rssi"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
-    async def async_press(self) -> None:
-        """Called when user presses the Connect button in HA."""
-        _LOGGER.debug("VolcanoConnectButton: pressed by user.")
-        await self._manager.async_user_connect()
+    @property
+    def native_value(self):
+        val = self._manager.rssi
+        _LOGGER.debug("%s: native_value -> %s dBm", type(self).__name__, val)
+        return val
 
-
-class VolcanoDisconnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to disconnect BLE."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Disconnect"
-        self._attr_unique_id = "volcano_disconnect_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Disconnect button in HA."""
-        _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
-        await self._manager.async_user_disconnect()
-
-
-# ---------------------------------------------------------------------------
-#  Fan On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoFanOnButton(VolcanoBaseButton):
-    """A button to turn Fan ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Fan On"
-        self._attr_unique_id = "volcano_fan_on_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Fan On button."""
-        _LOGGER.debug("VolcanoFanOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_FAN_ON, payload=b"\x01")
-
-
-class VolcanoFanOffButton(VolcanoBaseButton):
-    """A button to turn Fan OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Fan Off"
-        self._attr_unique_id = "volcano_fan_off_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Fan Off button."""
-        _LOGGER.debug("VolcanoFanOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_FAN_OFF, payload=b"\x00")
-
-
-# ---------------------------------------------------------------------------
-#  Heat On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoHeatOnButton(VolcanoBaseButton):
-    """A button to turn Heat ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat On"
-        self._attr_unique_id = "volcano_heat_on_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat On button."""
-        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
-
-
-class VolcanoHeatOffButton(VolcanoBaseButton):
-    """A button to turn Heat OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat Off"
-        self._attr_unique_id = "volcano_heat_off_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
+    @property
+    def available(self):
+        """Available only if BLE is connected."""
+        return (self._manager.bt_status == "CONNECTED")
