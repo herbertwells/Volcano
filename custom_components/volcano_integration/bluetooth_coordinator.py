@@ -18,21 +18,6 @@ _LOGGER = logging.getLogger(__name__)
 # Replace with your device's MAC address
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
-# GATT Characteristic UUIDs
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
-UUID_FAN_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan Notifications
-
-# Fan Control UUIDs
-UUID_FAN_ON = "10110013-5354-4f52-5a26-4249434b454c"
-UUID_FAN_OFF = "10110014-5354-4f52-5a26-4249434b454c"
-
-# Heat Control UUIDs
-UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
-UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
-
-# Heater Setpoint UUID
-UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
-
 # Timings
 RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
 POLL_INTERVAL = 0.5         # Seconds between temperature polls
@@ -45,7 +30,6 @@ VALID_PATTERNS = {
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
 }
-
 
 class VolcanoBTManager:
     """
@@ -78,6 +62,21 @@ class VolcanoBTManager:
         self._sensors = []
 
         self._last_rssi_time = 0.0
+
+        # Define UUIDs as instance attributes
+        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"               # Current Temperature
+        self.UUID_FAN_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan Notifications
+
+        # Fan Control UUIDs
+        self.UUID_FAN_ON = "10110013-5354-4f52-5a26-4249434b454c"
+        self.UUID_FAN_OFF = "10110014-5354-4f52-5a26-4249434b454c"
+
+        # Heat Control UUIDs
+        self.UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
+        self.UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
+
+        # Heater Setpoint UUID
+        self.UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
     def register_sensor(self, sensor_entity):
         """Register a sensor to receive updates."""
@@ -192,8 +191,8 @@ class VolcanoBTManager:
             self._notify_sensors()
 
         try:
-            _LOGGER.info("Subscribing to fan notifications on UUID %s", UUID_FAN_NOTIFICATIONS)
-            await self._client.start_notify(UUID_FAN_NOTIFICATIONS, notification_handler)
+            _LOGGER.info("Subscribing to fan notifications on UUID %s", self.UUID_FAN_NOTIFICATIONS)
+            await self._client.start_notify(self.UUID_FAN_NOTIFICATIONS, notification_handler)
             _LOGGER.debug("Fan subscription active.")
         except BleakError as e:
             err_str = f"ERROR subscribing to fan: {e}"
@@ -207,7 +206,7 @@ class VolcanoBTManager:
             return
 
         try:
-            data = await self._client.read_gatt_char(UUID_TEMP)
+            data = await self._client.read_gatt_char(self.UUID_TEMP)
             _LOGGER.debug("Read temperature raw bytes: %s", data.hex())
 
             if len(data) < 2:
@@ -312,10 +311,10 @@ class VolcanoBTManager:
         )
 
         try:
-            await self._client.write_gatt_char(UUID_HEATER_SETPOINT, setpoint_bytes)
+            await self._client.write_gatt_char(self.UUID_HEATER_SETPOINT, setpoint_bytes)
             _LOGGER.info(
                 "Heater setpoint updated to %.1f °C (raw %s) at UUID %s",
-                safe_temp, setpoint_bytes.hex(), UUID_HEATER_SETPOINT
+                safe_temp, setpoint_bytes.hex(), self.UUID_HEATER_SETPOINT
             )
         except BleakError as e:
             _LOGGER.error("Error writing heater temp: %s", e)
