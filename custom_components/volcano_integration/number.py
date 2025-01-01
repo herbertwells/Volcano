@@ -1,132 +1,71 @@
-"""Platform for button integration. Adds Fan/Heat On/Off in addition to Connect/Disconnect."""
+"""Platform for number integration - to set heater temperature (40–230 °C)."""
 import logging
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.number import NumberEntity
+from homeassistant.const import UnitOfTemperature
+from homeassistant.helpers.entity import EntityCategory
+
 from . import DOMAIN
-from .bluetooth_coordinator import (
-    UUID_FAN_ON, UUID_FAN_OFF,
-    UUID_HEAT_ON, UUID_HEAT_OFF
-)
 
 _LOGGER = logging.getLogger(__name__)
 
+MIN_TEMP = 40.0
+MAX_TEMP = 230.0
+DEFAULT_TEMP = 170.0
+STEP = 1.0  # 1 °C increments
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Volcano buttons for a config entry."""
-    _LOGGER.debug("Setting up Volcano buttons for entry: %s", entry.entry_id)
+    """Set up Volcano temperature number for a config entry."""
+    _LOGGER.debug("Setting up Volcano number for entry: %s", entry.entry_id)
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
-        VolcanoConnectButton(manager),
-        VolcanoDisconnectButton(manager),
-
-        # Fan/Heat GATT write buttons
-        VolcanoFanOnButton(manager),
-        VolcanoFanOffButton(manager),
-        VolcanoHeatOnButton(manager),
-        VolcanoHeatOffButton(manager),
-    ]
+    entities = [VolcanoHeaterTempNumber(manager)]
     async_add_entities(entities)
 
 
-class VolcanoBaseButton(ButtonEntity):
-    """Base button for the Volcano integration that references the BT manager."""
+class VolcanoHeaterTempNumber(NumberEntity):
+    """Number entity for setting the Volcano's heater temperature (40–230 °C)."""
 
     def __init__(self, manager):
         self._manager = manager
+        self._attr_name = "Volcano Heater Temperature Setpoint"
+        self._attr_unique_id = "volcano_heater_temperature_setpoint"
+        self._attr_entity_category = EntityCategory.CONFIG
+
+        # Set the allowed range
+        self._attr_native_min_value = MIN_TEMP
+        self._attr_native_max_value = MAX_TEMP
+        self._attr_native_step = STEP
+        self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+        self._temp_value = DEFAULT_TEMP  # Initialize to default
+
+    @property
+    def native_value(self):
+        """
+        Return the current setpoint.
+        """
+        return self._temp_value
+
+    async def async_set_native_value(self, value: float) -> None:
+        """
+        Called when the user sets a new temperature in the HA UI.
+        """
+        clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
+        _LOGGER.debug(
+            "User set heater temperature to %.1f °C -> clamped=%.1f",
+            value, clamped_val
+        )
+        self._temp_value = clamped_val
+
+        # Write the setpoint to the device
+        await self._manager.set_heater_temperature(clamped_val)
+
+        # Update the state in HA
+        self.async_write_ha_state()
 
     @property
     def available(self):
-        """We can keep these always available so user can try them anytime."""
-        return True
-
-
-class VolcanoConnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to connect BLE."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Connect"
-        self._attr_unique_id = "volcano_connect_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Connect button in HA."""
-        _LOGGER.debug("VolcanoConnectButton: pressed by user.")
-        await self._manager.async_user_connect()
-
-
-class VolcanoDisconnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to disconnect BLE."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Disconnect"
-        self._attr_unique_id = "volcano_disconnect_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Disconnect button in HA."""
-        _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
-        await self._manager.async_user_disconnect()
-
-
-# ---------------------------------------------------------------------------
-#  Fan On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoFanOnButton(VolcanoBaseButton):
-    """A button to turn Fan ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Fan On"
-        self._attr_unique_id = "volcano_fan_on_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Fan On button."""
-        _LOGGER.debug("VolcanoFanOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_FAN_ON, payload=b"\x01")
-
-
-class VolcanoFanOffButton(VolcanoBaseButton):
-    """A button to turn Fan OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Fan Off"
-        self._attr_unique_id = "volcano_fan_off_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Fan Off button."""
-        _LOGGER.debug("VolcanoFanOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_FAN_OFF, payload=b"\x00")
-
-
-# ---------------------------------------------------------------------------
-#  Heat On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoHeatOnButton(VolcanoBaseButton):
-    """A button to turn Heat ON by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat On"
-        self._attr_unique_id = "volcano_heat_on_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat On button."""
-        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
-
-
-class VolcanoHeatOffButton(VolcanoBaseButton):
-    """A button to turn Heat OFF by writing to a GATT characteristic."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat Off"
-        self._attr_unique_id = "volcano_heat_off_button"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
+        """Only available if BLE is connected."""
+        return (self._manager.bt_status == "CONNECTED")
