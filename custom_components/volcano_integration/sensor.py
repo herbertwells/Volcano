@@ -31,11 +31,6 @@ class VolcanoBaseSensor(SensorEntity):
     def __init__(self, manager):
         self._manager = manager
 
-    @property
-    def device_info(self):
-        """Return device info for device registry."""
-        return self._manager.device_info
-
     async def async_added_to_hass(self):
         _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
         self._manager.register_sensor(self)
@@ -54,6 +49,14 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
         self._attr_unique_id = "volcano_current_temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",  # Replace with actual manufacturer
+            "model": "Volcano Model",           # Replace with actual model
+            "sw_version": "1.0.0",             # Replace with actual software version
+            "via_device": None,                # Replace if via another device
+        }
 
     @property
     def native_value(self):
@@ -74,6 +77,14 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Heat Status"
         self._attr_unique_id = "volcano_heat_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
     @property
     def native_value(self):
@@ -94,6 +105,14 @@ class VolcanoFanStatusSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Fan Status"
         self._attr_unique_id = "volcano_fan_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
     @property
     def native_value(self):
@@ -114,6 +133,14 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
     @property
     def native_value(self):
@@ -135,8 +162,15 @@ class VolcanoRSSISensor(VolcanoBaseSensor):
         self._attr_name = "Volcano RSSI"
         self._attr_unique_id = "volcano_rssi"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        # No built-in device_class for RSSI, specify unit
         self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "YourManufacturer",
+            "model": "Volcano Model",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
     @property
     def native_value(self):
