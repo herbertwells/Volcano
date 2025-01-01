@@ -29,6 +29,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
     """Number entity for setting the Volcano's heater temperature (40–230 °C)."""
 
     def __init__(self, manager):
+        super().__init__()  # Removed passing manager
         self._manager = manager
         self._attr_name = "Volcano Heater Temperature Setpoint"
         self._attr_unique_id = "volcano_heater_temperature_setpoint"
