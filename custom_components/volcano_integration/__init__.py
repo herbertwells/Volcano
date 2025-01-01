@@ -1,4 +1,4 @@
-"""Volcano Integration for Home Assistant."""
+custom_components/volcano_integration/__init__.py: """Volcano Integration for Home Assistant."""
 import logging
 import asyncio
 
@@ -86,11 +86,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: float):
         """Wait until the current temperature reaches or exceeds the target temperature."""
-        _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C")
-        while manager.current_temperature is not None and manager.current_temperature < target_temp:
-            _LOGGER.debug("wait_for_temperature. Waiting 500ms for temperature target.")
+        timeout = 300  # 5 minutes
+        elapsed_time = 0
+        _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
+        while elapsed_time < timeout:
+            if manager.current_temperature is not None:
+                _LOGGER.debug(
+                    f"Current temperature is {manager.current_temperature}°C; target is {target_temp}°C"
+                )
+                if manager.current_temperature >= target_temp:
+                    _LOGGER.info(f"Target temperature {target_temp}°C reached.")
+                    return
+            else:
+                _LOGGER.warning("Current temperature is None; retrying...")
             await asyncio.sleep(0.5)  # Poll every 500 ms
-        _LOGGER.debug(f"Target temperature {target_temp}°C reached")
+            elapsed_time += 0.5
+        _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
     # Register each service with Home Assistant
     hass.services.async_register(
