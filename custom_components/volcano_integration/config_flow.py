@@ -24,7 +24,10 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({
                 vol.Required("name", default="Volcano Vaporizer"): str,
-                vol.Required("mac_address"): str,
+                vol.Required("mac_address"): vol.All(
+                    vol.Upper,
+                    vol.Match(r"^([0-9A-F]{2}:){5}[0-9A-F]{2}$"),
+                ),
             }),
         )
 
