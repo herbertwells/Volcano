@@ -88,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         """Wait until the current temperature reaches or exceeds the target temperature."""
         _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C")
         while manager.current_temperature is not None and manager.current_temperature < target_temp:
-            await asyncio.sleep(0.5)  # Poll every 2 seconds
+            await asyncio.sleep(0.5)  # Poll every 500 ms
         _LOGGER.debug(f"Target temperature {target_temp}°C reached")
 
     # Register each service with Home Assistant
