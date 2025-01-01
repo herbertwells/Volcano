@@ -130,7 +130,7 @@ class VolcanoRSSISensor(VolcanoBaseSensor):
         self._attr_name = "Volcano RSSI"
         self._attr_unique_id = "volcano_rssi"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        # There's no built-in device_class for RSSI, but we can at least specify a unit
+        # No built-in device_class for RSSI, specify unit
         self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS
 
     @property
