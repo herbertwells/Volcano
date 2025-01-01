@@ -1,6 +1,5 @@
 """Volcano Integration."""
 
-import asyncio
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -17,7 +16,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Volcano Integration."""
     _LOGGER.debug("Initializing Volcano Integration setup.")
     hass.data.setdefault(DOMAIN, {})
-    return True  # Indicate successful setup
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Volcano Integration from a config entry."""
@@ -25,16 +24,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         manager = VolcanoBTManager()
         hass.data[DOMAIN][entry.entry_id] = manager
-
-        # Removed the automatic start to prevent Bluetooth connection on startup
-        # await manager.start()
-
         _LOGGER.info("Volcano Integration setup complete for entry: %s", entry.entry_id)
-        return True  # Indicate successful setup
-
+        return True
     except Exception as e:
         _LOGGER.error("Error during Volcano Integration setup: %s", e)
-        raise ConfigEntryNotReady from e  # Let HA know the setup failed temporarily
+        raise ConfigEntryNotReady from e
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
@@ -46,10 +40,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             await manager.stop()
             hass.data[DOMAIN].pop(entry.entry_id)
             _LOGGER.info("Volcano Integration unloaded for entry: %s", entry.entry_id)
-            return True  # Indicate successful unload
+            return True
         except Exception as e:
             _LOGGER.error("Error unloading Volcano Integration: %s", e)
-            return False  # Indicate unload failed
+            return False
     else:
         _LOGGER.warning("No manager found for entry: %s", entry.entry_id)
-        return False  # Indicate unload failed
+        return False
