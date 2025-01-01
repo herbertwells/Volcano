@@ -1,7 +1,7 @@
 {
   "domain": "volcano_integration",
   "name": "Volcano Integration",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
   "requirements": [
     "bleak"
