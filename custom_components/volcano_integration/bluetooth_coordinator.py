@@ -1,4 +1,4 @@
-"""Bluetooth Coordinator for the Volcano Integration with defensive RSSI reading and reverted connect method."""
+"""Bluetooth Coordinator for the Volcano Integration with improved RSSI on HA OS + GATT writes support."""
 import asyncio
 import logging
 import time
@@ -7,19 +7,23 @@ from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
 
-# Change this to your device's MAC address
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
 UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"      # Current Temperature
 UUID_FAN_HEAT = "1010000c-5354-4f52-5a26-4249434b454c"  # Fan/Pump notifications
 
+# Pump/Heat Write UUIDs
+UUID_PUMP_ON  = "10110013-5354-4f52-5a26-4249434b454c"
+UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
+UUID_HEAT_ON  = "1011000f-5354-4f52-5a26-4249434b454c"
+UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
+
 # Timings
 RECONNECT_INTERVAL = 3      # 3s before reconnect attempts
 POLL_INTERVAL = 0.5         # 0.5s for temperature
 RSSI_INTERVAL = 60.0        # 60s for RSSI
 
-# Fan/Pump patterns for two bytes: (heat_byte, fan_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -33,15 +37,11 @@ class VolcanoBTManager:
     Manages:
       - A background loop that polls temperature every 0.5s
       - Subscribes to fan/pump notifications
-      - Reads RSSI every 60s (if supported)
-      - Exposes:
-         * current_temperature
-         * heat_state (ON/OFF/UNKNOWN)
-         * fan_state (ON/OFF/UNKNOWN)
-         * rssi
-         * bt_status
-      - Buttons can call async_user_connect() / async_user_disconnect()
-      - _connect() reverted to older approach using 'await is_connected()'
+      - Reads RSSI every 60s (if supported by the backend)
+      - Exposes write_gatt_command() for Pump/Heat ON/OFF
+      - Provides user connect/disconnect methods
+      - Reverted _connect() approach using 'await is_connected()'
+      - Calls get_services() after connect, which often helps finalize RSSI support on HA OS
     """
 
     def __init__(self):
@@ -74,10 +74,7 @@ class VolcanoBTManager:
             self._sensors.remove(sensor_entity)
 
     def start(self, hass):
-        """
-        Start the manager in Home Assistant's event loop.
-        The background task will keep trying to connect, read temperature, etc.
-        """
+        """Start the manager in Home Assistant's event loop."""
         _LOGGER.debug("VolcanoBTManager.start() -> creating background task.")
         self._hass = hass
         self._stop_event.clear()
@@ -100,7 +97,7 @@ class VolcanoBTManager:
                 # Poll temperature
                 await self._read_temperature()
 
-                # Periodically read RSSI (every 60s)
+                # Periodically read RSSI
                 now = time.time()
                 if (now - self._last_rssi_time) >= RSSI_INTERVAL:
                     await self._read_rssi()
@@ -120,7 +117,9 @@ class VolcanoBTManager:
             self._client = BleakClient(BT_DEVICE_ADDRESS)
 
             await self._client.connect()
-            # Reverted approach:
+            # Often helps finalize discovery on Linux/BlueZ
+            await self._client.get_services()
+
             self._connected = await self._client.is_connected()
 
             if self._connected:
@@ -145,7 +144,7 @@ class VolcanoBTManager:
             await asyncio.sleep(RECONNECT_INTERVAL)
 
     async def _subscribe_notifications(self):
-        """Subscribe to fan/pump notifications (two bytes)."""
+        """Subscribe to fan/pump notifications (two-byte pattern)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot subscribe to fan/pump notifications: not connected.")
             return
@@ -254,6 +253,28 @@ class VolcanoBTManager:
         self._connected = False
         self.bt_status = "DISCONNECTED"
         _LOGGER.info("Disconnected from device %s.", BT_DEVICE_ADDRESS)
+
+    # -------------------------------------------------------------------------
+    # Write GATT Command: Pump/Heat ON/OFF
+    # -------------------------------------------------------------------------
+    async def write_gatt_command(self, write_uuid: str):
+        """
+        Called by our button entities to write a GATT characteristic for
+        Pump ON/OFF or Heat ON/OFF.
+        """
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
+            return
+
+        try:
+            # We'll write an empty payload, assuming the characteristic triggers ON/OFF
+            _LOGGER.debug("Writing GATT char %s -> empty payload", write_uuid)
+            await self._client.write_gatt_char(write_uuid, b"")  # or b"\x01" if needed
+            _LOGGER.info("Successfully wrote to %s", write_uuid)
+        except BleakError as e:
+            _LOGGER.error("Error writing to %s: %s", write_uuid, e)
+            self.bt_status = f"ERROR: {e}"
+            self._notify_sensors()
 
     # -------------------------------------------------------------------------
     # Connect/Disconnect button methods
