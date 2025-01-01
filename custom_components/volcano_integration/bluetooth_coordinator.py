@@ -5,6 +5,7 @@
 - Adds functionality to set heater temperature.
 - Handles Fan and Heat On/Off commands asynchronously.
 - Connection managed via Connect/Disconnect buttons.
+- Implements services for button actions and set_temperature.
 """
 
 import asyncio
@@ -46,7 +47,6 @@ VALID_PATTERNS = {
     (0x23, 0x30): ("ON", "ON"),
 }
 
-
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
@@ -59,6 +59,7 @@ class VolcanoBTManager:
       - Handles Fan and Heat On/Off commands.
       - Allows setting the heater temperature.
       - Manages connection status and reconnection logic.
+      - Provides services for button actions and set_temperature.
     """
 
     def __init__(self):
