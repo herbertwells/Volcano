@@ -5,7 +5,7 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature, SIGNAL_STRENGTH_DECIBELS
 
-from . import DOMAIN
+from . import DOMAIN, BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
