@@ -1,9 +1,9 @@
 """Bluetooth Coordinator for the Volcano Integration.
 
 - References to 'fan' changed to 'pump'.
-- Fixes RSSI reading using property-based access to avoid FutureWarnings.
-- Adds a method to set heater temperature.
-- Handles write commands for Pump and Heat On/Off.
+- Fixes FutureWarnings by using property-based access.
+- Adds functionality to set heater temperature.
+- Handles Pump and Heat On/Off commands asynchronously.
 """
 
 import asyncio
@@ -14,26 +14,30 @@ from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
 
-# Change this to your device's MAC address
+# Replace with your device's MAC address
 BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
 # GATT Characteristic UUIDs
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"       # Current Temperature
-UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump notifications
-UUID_PUMP_ON  = "10110013-5354-4f52-5a26-4249434b454c"
+UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"          # Current Temperature
+UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
+
+# Pump Control UUIDs
+UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
 UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
-UUID_HEAT_ON  = "1011000f-5354-4f52-5a26-4249434b454c"
+
+# Heat Control UUIDs
+UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
 UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
 
-# NEW: Heater setpoint write UUID
+# Heater Setpoint UUID
 UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
 # Timings
-RECONNECT_INTERVAL = 3      # 3s before reconnect attempts
-POLL_INTERVAL = 0.5         # 0.5s for temperature
-RSSI_INTERVAL = 60.0        # 60s for RSSI
+RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
+POLL_INTERVAL = 0.5         # Seconds between temperature polls
+RSSI_INTERVAL = 60.0        # Seconds between RSSI readings
 
-# Pump patterns for the 2 bytes: (heat_byte, pump_byte)
+# Pump patterns: (heat_byte, pump_byte)
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
     (0x00, 0x00): ("OFF", "OFF"),
@@ -41,17 +45,18 @@ VALID_PATTERNS = {
     (0x23, 0x30): ("ON", "ON"),
 }
 
-
 class VolcanoBTManager:
     """
-    Manages:
-      - A background loop that polls temperature every 0.5s
-      - Subscribes to pump notifications
-      - Reads RSSI every 60s (if supported by the backend)
-      - Exposes write_gatt_command() for Pump/Heat On/Off
-      - Provides user connect/disconnect methods
-      - Adds set_heater_temperature() to set the heater's temperature
-      - Uses property-based access to avoid FutureWarnings
+    Manages Bluetooth communication with the Volcano device.
+    
+    Responsibilities:
+      - Connects to the device.
+      - Polls temperature every 0.5 seconds.
+      - Subscribes to pump notifications.
+      - Reads RSSI every 60 seconds.
+      - Handles Pump and Heat On/Off commands.
+      - Allows setting the heater temperature.
+      - Manages connection status and reconnection logic.
     """
 
     def __init__(self):
@@ -73,30 +78,30 @@ class VolcanoBTManager:
         self._last_rssi_time = 0.0
 
     def register_sensor(self, sensor_entity):
-        """Register a sensor so it can be notified of new data."""
+        """Register a sensor to receive updates."""
         if sensor_entity not in self._sensors:
             self._sensors.append(sensor_entity)
 
     def unregister_sensor(self, sensor_entity):
-        """Unregister a sensor."""
+        """Unregister a sensor from receiving updates."""
         if sensor_entity in self._sensors:
             self._sensors.remove(sensor_entity)
 
     def start(self, hass):
-        """Start the manager in Home Assistant's event loop."""
+        """Start the Bluetooth manager."""
         _LOGGER.debug("VolcanoBTManager.start() -> creating background task.")
         self._hass = hass
         self._stop_event.clear()
         self._task = hass.loop.create_task(self._run())
 
     def stop(self):
-        """Stop the background loop by setting the stop_event."""
+        """Stop the Bluetooth manager."""
         _LOGGER.debug("VolcanoBTManager.stop() -> stopping background task.")
         if self._task and not self._task.done():
             self._stop_event.set()
 
     async def _run(self):
-        """Main loop: connect if needed, poll temperature, handle RSSI, etc."""
+        """Main loop to manage Bluetooth connection and data polling."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
             if not self._connected:
@@ -268,15 +273,15 @@ class VolcanoBTManager:
     # -------------------------------------------------------------------------
     # Write GATT Command: Pump/Heat ON/OFF
     # -------------------------------------------------------------------------
-    async def write_gatt_command(self, write_uuid: str):
-        """Write an empty payload to turn Pump/Heat ON/OFF."""
+    async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
+        """Write a payload to a GATT characteristic to control Pump/Heat."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
             return
 
         try:
-            _LOGGER.debug("Writing GATT char %s -> empty payload", write_uuid)
-            await self._client.write_gatt_char(write_uuid, b"")
+            _LOGGER.debug("Writing GATT char %s -> payload %s", write_uuid, payload.hex())
+            await self._client.write_gatt_char(write_uuid, payload)
             _LOGGER.info("Successfully wrote to %s", write_uuid)
         except BleakError as e:
             _LOGGER.error("Error writing to %s: %s", write_uuid, e)
@@ -289,7 +294,7 @@ class VolcanoBTManager:
     async def set_heater_temperature(self, temp_c: float):
         """
         Write the temperature setpoint to the heater's GATT characteristic (UUID_HEATER_SETPOINT).
-        Assumes a 16-bit little-endian integer representing tenths of degrees.
+        Assumes a 16-bit little-endian integer representing tenths of degrees Celsius.
         """
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set heater temperature - not connected.")
