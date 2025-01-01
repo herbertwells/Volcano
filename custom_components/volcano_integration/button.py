@@ -1,7 +1,6 @@
 """Platform for button integration."""
 
 import logging
-
 from homeassistant.components.button import ButtonEntity
 
 from . import DOMAIN
@@ -49,5 +48,58 @@ class VolcanoDisconnectButton(ButtonEntity):
         _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
         await self._manager.stop()
 
-# Similarly, implement Pump On/Off and Heat On/Off buttons
-# Ensure they call the appropriate methods in VolcanoBTManager
+class VolcanoPumpOnButton(ButtonEntity):
+    """A button to turn the pump on."""
+
+    def __init__(self, manager):
+        self._manager = manager
+        self._attr_name = "Volcano Pump On"
+        self._attr_unique_id = "volcano_pump_on_button"
+        self._attr_icon = "mdi:fan"
+
+    async def async_press(self) -> None:
+        """Called when user presses the Pump On button."""
+        _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
+        await self._manager.write_gatt("10110013-5354-4f52-5a26-4249434b454c", b'\x01')
+
+class VolcanoPumpOffButton(ButtonEntity):
+    """A button to turn the pump off."""
+
+    def __init__(self, manager):
+        self._manager = manager
+        self._attr_name = "Volcano Pump Off"
+        self._attr_unique_id = "volcano_pump_off_button"
+        self._attr_icon = "mdi:fan-off"
+
+    async def async_press(self) -> None:
+        """Called when user presses the Pump Off button."""
+        _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
+        await self._manager.write_gatt("10110014-5354-4f52-5a26-4249434b454c", b'\x00')
+
+class VolcanoHeatOnButton(ButtonEntity):
+    """A button to turn the heat on."""
+
+    def __init__(self, manager):
+        self._manager = manager
+        self._attr_name = "Volcano Heat On"
+        self._attr_unique_id = "volcano_heat_on_button"
+        self._attr_icon = "mdi:fire"
+
+    async def async_press(self) -> None:
+        """Called when user presses the Heat On button."""
+        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
+        await self._manager.write_gatt("1011000f-5354-4f52-5a26-4249434b454c", b'\x01')
+
+class VolcanoHeatOffButton(ButtonEntity):
+    """A button to turn the heat off."""
+
+    def __init__(self, manager):
+        self._manager = manager
+        self._attr_name = "Volcano Heat Off"
+        self._attr_unique_id = "volcano_heat_off_button"
+        self._attr_icon = "mdi:fire-off"
+
+    async def async_press(self) -> None:
+        """Called when user presses the Heat Off button."""
+        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
+        await self._manager.write_gatt("10110010-5354-4f52-5a26-4249434b454c", b'\x00')
