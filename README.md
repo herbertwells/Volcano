@@ -1,82 +1,68 @@
-# Volcano Integration for Home Assistant
+# Volcano Integration
 
-A custom Home Assistant integration to monitor and control your Volcano heater via Bluetooth.
+**Volcano Integration** allows you to control and monitor your Volcano Vaporizer directly from Home Assistant.
 
 ## Features
 
-- **Temperature Monitoring:** Displays current temperature (°C).
-- **Heat Status:** Shows if the heater is ON, OFF, or UNKNOWN.
-- **Fan Status:** Indicates if the fan is ON, OFF, or UNKNOWN.
-- **RSSI Monitoring:** Displays Bluetooth signal strength (dBm).
-- **Bluetooth Status:** Shows connection status (CONNECTING, CONNECTED, DISCONNECTED).
-- **Control Buttons:**
-  - **Connect/Disconnect:** Manage Bluetooth connection manually.
-  - **Fan On/Off:** Control the fan state.
-  - **Heat On/Off:** Control the heater state.
-- **Temperature Setpoint:** Slider to set heater temperature (40°C - 230°C, default 170°C).
+- Monitor current temperature
+- Control pump (ON/OFF)
+- Control heat (ON/OFF)
+- Set heater temperature
 
 ## Installation
 
-1. **Add Integration via HACS:**
-   - Ensure you have [HACS](https://hacs.xyz/) installed.
-   - In Home Assistant, go to **HACS > Integrations**.
-   - Click **Browse & Add Repositories**.
-   - Search for "Volcano Integration" and add it.
+### Via HACS (Recommended)
 
-2. **Dependencies Managed by HACS:**
-   - The integration requires `bleak>=0.20.0`.
-   - HACS will automatically install this dependency based on the `manifest.json`.
+1. Ensure you have [HACS](https://hacs.xyz/) installed in your Home Assistant setup.
+2. Navigate to **HACS > Integrations**.
+3. Click the **+** button to add a new integration.
+4. Search for **Volcano Integration** and install it.
+5. Restart Home Assistant.
 
-3. **Restart Home Assistant:**
-   - After installation, go to **Configuration > Server Controls**.
-   - Click **Restart** under **Server management**.
+### Manual Installation
+
+1. Download the repository as a ZIP file.
+2. Extract the contents and place the `volcano_integration` folder inside the `custom_components` directory of your Home Assistant configuration.
+3. Restart Home Assistant.
 
 ## Configuration
 
-1. **Add Integration:**
-   - Navigate to **Configuration > Devices & Services**.
-   - Click **Add Integration** and search for "Volcano Integration".
-   - Follow the prompts to set up.
+1. Navigate to **Configuration > Integrations** in Home Assistant.
+2. Click **Add Integration** and search for **Volcano Integration**.
+3. Enter the required information:
+   - **Name:** Volcano Vaporizer
+   - **MAC Address:** Your device's MAC address (format: XX:XX:XX:XX:XX:XX)
+4. Complete the setup and restart Home Assistant if prompted.
 
-2. **Manage Connection:**
-   - Use **Volcano Connect** and **Volcano Disconnect** buttons to manage Bluetooth manually.
+## Usage
 
-## Entities
+- **Sensors:**
+  - **Volcano Current Temperature:** Displays the current temperature of the device.
+  - **Volcano Heat Status:** Shows whether the heat is ON or OFF.
+  - **Volcano Pump Status:** Indicates the pump's current state (ON/OFF).
+  - **Volcano Bluetooth Status:** Shows the Bluetooth connection status.
 
-### Sensors
+- **Buttons:**
+  - **Volcano Connect:** Manually connect the device.
+  - **Volcano Disconnect:** Manually disconnect the device.
+  - **Volcano Pump On:** Turn the pump ON.
+  - **Volcano Pump Off:** Turn the pump OFF.
+  - **Volcano Heat On:** Turn the heat ON.
+  - **Volcano Heat Off:** Turn the heat OFF.
 
-- **Volcano Current Temperature:** Displays current temperature.
-- **Volcano Heat Status:** Shows heater state.
-- **Volcano Fan Status:** Shows fan state.
-- **Volcano RSSI:** Shows Bluetooth signal strength.
-- **Volcano Bluetooth Status:** Shows Bluetooth connection status.
-
-### Buttons
-
-- **Volcano Connect:** Connect to the Volcano device.
-- **Volcano Disconnect:** Disconnect from the Volcano device.
-- **Volcano Fan On:** Turn fan ON.
-- **Volcano Fan Off:** Turn fan OFF.
-- **Volcano Heat On:** Turn heater ON.
-- **Volcano Heat Off:** Turn heater OFF.
-
-### Number Entity
-
-- **Volcano Heater Temperature Setpoint:** Set heater temperature (40°C - 230°C, default 170°C).
+- **Number:**
+  - **Volcano Heater Temperature Setpoint:** Set the desired heater temperature (40–230 °C).
 
 ## Troubleshooting
 
-- **Slider Range Incorrect (0°C - 100°C):**
-  - Ensure `manifest.json` includes `"bleak>=0.20.0"` under `requirements`.
-  - Create a new GitHub release/tag for the integration.
-  - Update the integration via HACS to trigger dependency installation.
-  - Clear browser cache or use an incognito window.
+- **Icon Not Displaying Correctly:** Ensure that both `icon` and `logo` are correctly specified in `manifest.json`.
+- **Connection Issues:** Verify the MAC address and ensure the device is powered on and within Bluetooth range.
+- **Unknown Pump/Heat Patterns:** Check the logs for any new byte patterns and update `VALID_PATTERNS` accordingly.
 
-- **Bluetooth Issues:**
-  - Verify device MAC address in `bluetooth_coordinator.py`.
-  - Ensure no other device is connected to the Volcano heater.
-  - Check Bluetooth adapter compatibility.
+## Contributing
 
-- **Entities Not Showing:**
-  - Check Home Assistant logs for errors.
-  - Ensure all files are correctly placed in `custom_components/volcano_integration/`.
+Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+
+## License
+
+[MIT License](LICENSE)
