@@ -1,6 +1,6 @@
 """Bluetooth Coordinator for the Volcano Integration.
 
-Refactored for improved connection stability, error handling, and task management.
+Improved to handle persistent Bluetooth backend issues, enhanced retry logic, and continuous connection looping.
 """
 import asyncio
 import logging
