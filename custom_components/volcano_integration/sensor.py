@@ -9,7 +9,6 @@ from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano sensors for a config entry."""
     _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
@@ -20,8 +19,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoCurrentTempSensor(manager),
         VolcanoHeatStatusSensor(manager),
         VolcanoPumpStatusSensor(manager),
+        VolcanoTemperatureTargetStatusSensor(manager),  # New sensor
         VolcanoBTStatusSensor(manager),
-        VolcanoTemperatureTargetStatusSensor(manager),  # New Target Status Sensor
     ]
     async_add_entities(entities)
 
@@ -69,7 +68,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return self._manager.bt_status == "CONNECTED"
+        return (self._manager.bt_status == "CONNECTED")
 
 
 class VolcanoHeatStatusSensor(VolcanoBaseSensor):
@@ -97,11 +96,11 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return self._manager.bt_status == "CONNECTED"
+        return (self._manager.bt_status == "CONNECTED")
 
 
 class VolcanoPumpStatusSensor(VolcanoBaseSensor):
-    """Pump Status Sensor (ON/OFF)."""
+    """Pump Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -125,7 +124,35 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return self._manager.bt_status == "CONNECTED"
+        return (self._manager.bt_status == "CONNECTED")
+
+
+class VolcanoTemperatureTargetStatusSensor(VolcanoBaseSensor):
+    """Temperature Target Status Sensor (Target met, Bursting, Over Target, or Raw Code)."""
+
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Temperature Target Status"
+        self._attr_unique_id = "volcano_temperature_target_status"
+        self._attr_icon = "mdi:target"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.temperature_target_status
+        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        return (self._manager.bt_status == "CONNECTED")
 
 
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
@@ -152,32 +179,5 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return True  # Always show the BT Status sensor
-
-
-class VolcanoTemperatureTargetStatusSensor(VolcanoBaseSensor):
-    """Temperature Target Status Sensor."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Temperature Target Status"
-        self._attr_unique_id = "volcano_temperature_target_status"
-        self._attr_icon = "mdi:target"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def native_value(self):
-        val = self._manager.target_status
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
-        return val
-
-    @property
-    def available(self):
-        return self._manager.bt_status == "CONNECTED"
+        # Always show the BT Status sensor
+        return True
