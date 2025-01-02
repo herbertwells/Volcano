@@ -5,6 +5,8 @@ Refactored for improved connection stability, error handling, and task managemen
 import asyncio
 import logging
 from bleak import BleakClient, BleakError
+import os
+import subprocess
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,6 +16,7 @@ BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 RECONNECT_INTERVAL_INITIAL = 3  # Initial retry interval in seconds
 MAX_RECONNECT_INTERVAL = 30    # Max retry interval in seconds
 TEMP_POLL_INTERVAL = 1         # Seconds between temperature polls
+MAX_RETRIES_BEFORE_RESET = 5   # Number of retries before resetting the Bluetooth stack
 
 # Pump patterns: (heat_byte, pump_byte)
 VALID_PATTERNS = {
@@ -48,6 +51,7 @@ class VolcanoBTManager:
         self._sensors = []
 
         self.reconnect_interval = RECONNECT_INTERVAL_INITIAL
+        self.retry_count = 0
 
     def register_sensor(self, sensor_entity):
         if sensor_entity not in self._sensors:
@@ -102,6 +106,7 @@ class VolcanoBTManager:
                         _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
                         self.bt_status = "CONNECTED"
                         self.reconnect_interval = RECONNECT_INTERVAL_INITIAL  # Reset interval
+                        self.retry_count = 0  # Reset retry count
                         await self._subscribe_pump_notifications()
                         return  # Exit the loop once connected
             except BleakError as e:
@@ -110,12 +115,31 @@ class VolcanoBTManager:
                 else:
                     _LOGGER.error("Bluetooth connect error: %s", e)
 
+                self.retry_count += 1
+                if self.retry_count >= MAX_RETRIES_BEFORE_RESET:
+                    _LOGGER.warning("Max retries reached. Attempting to reset Bluetooth stack.")
+                    await self._reset_bluetooth_stack()
+                    self.retry_count = 0
+
                 _LOGGER.debug("Retrying connection in %d seconds", self.reconnect_interval)
                 self.bt_status = "DISCONNECTED"
                 await asyncio.sleep(self.reconnect_interval)
                 self.reconnect_interval = min(
                     self.reconnect_interval * 2, MAX_RECONNECT_INTERVAL
                 )
+
+    async def _reset_bluetooth_stack(self):
+        """Attempts to reset the Bluetooth stack."""
+        try:
+            if os.name == 'posix':
+                _LOGGER.info("Resetting Bluetooth stack using systemctl (Linux).")
+                subprocess.run(["sudo", "systemctl", "restart", "bluetooth"], check=True)
+            elif os.name == 'nt':
+                _LOGGER.info("Resetting Bluetooth stack on Windows is not implemented. Please restart manually.")
+            else:
+                _LOGGER.warning("Bluetooth stack reset not supported on this platform.")
+        except Exception as e:
+            _LOGGER.error("Failed to reset Bluetooth stack: %s", e)
 
     async def _subscribe_pump_notifications(self):
         if not self._connected or not self._client:
