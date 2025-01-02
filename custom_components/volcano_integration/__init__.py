@@ -8,10 +8,16 @@ from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
 from .bluetooth_coordinator import VolcanoBTManager
+from .const import (
+    DOMAIN,
+    UUID_PUMP_ON,
+    UUID_PUMP_OFF,
+    UUID_HEAT_ON,
+    UUID_HEAT_OFF,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "volcano_integration"
 PLATFORMS = ["sensor", "button", "number"]
 
 # Define service names
@@ -67,22 +73,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_pump_on(call):
         """Handle the pump_on service."""
         _LOGGER.debug("Service 'pump_on' called.")
-        await manager.write_gatt_command(manager.UUID_PUMP_ON, payload=b"\x01")
+        await manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
 
     async def handle_pump_off(call):
         """Handle the pump_off service."""
         _LOGGER.debug("Service 'pump_off' called.")
-        await manager.write_gatt_command(manager.UUID_PUMP_OFF, payload=b"\x00")
+        await manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
 
     async def handle_heat_on(call):
         """Handle the heat_on service."""
         _LOGGER.debug("Service 'heat_on' called.")
-        await manager.write_gatt_command(manager.UUID_HEAT_ON, payload=b"\x01")
+        await manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
 
     async def handle_heat_off(call):
         """Handle the heat_off service."""
         _LOGGER.debug("Service 'heat_off' called.")
-        await manager.write_gatt_command(manager.UUID_HEAT_OFF, payload=b"\x00")
+        await manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
 
     async def handle_set_temperature(call):
         """Handle the set_temperature service."""
