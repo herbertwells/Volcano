@@ -115,6 +115,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             elapsed_time += 0.5
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
+    async def handle_unknown_pump_pattern(manager, b1, b2, data):
+        """Log unknown pump patterns and provide additional diagnostics."""
+        if (b1, b2) in [(0x23, 0x06), (0x23, 0x26)]:
+            _LOGGER.info(
+                "Special pump pattern detected (0x%02x, 0x%02x). Possible target temperature reached.",
+                b1, b2
+            )
+        else:
+            _LOGGER.warning(
+                "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
+                b1, b2, data.hex()
+            )
+
     # Register each service with Home Assistant
     hass.services.async_register(
         DOMAIN,
