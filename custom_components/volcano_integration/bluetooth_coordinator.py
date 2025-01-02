@@ -52,21 +52,15 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = "DISCONNECTED"  # Default to DISCONNECTED at startup
+        self._bt_status = None  # Initialize as None to ensure proper setup
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
-        self.slot_bluetooth_error = False  # Track slot BT errors
+        self.slot_bluetooth_error = False
 
-        # Define UUIDs as instance attributes
-        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"                # Current Temperature
-        self.UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
-        self.UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
-        self.UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
+        # Set the initial status to DISCONNECTED after setup completes
+        self.bt_status = "DISCONNECTED"
 
     @property
     def bt_status(self):
