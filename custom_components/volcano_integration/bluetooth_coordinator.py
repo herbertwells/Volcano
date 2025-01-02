@@ -255,8 +255,7 @@ class VolcanoBTManager:
             return
 
         safe_temp = max(40.0, min(temp_c, 230.0))
-        setpoint_int = int(safe_temp * 10)
-        setpoint_bytes = setpoint_int.to_bytes(2, byteorder="little", signed=False)
+        setpoint_bytes = int(safe_temp * 10).to_bytes(2, byteorder="little")
 
         _LOGGER.debug("Writing heater temperature=%.1f °C -> raw=%s", safe_temp, setpoint_bytes.hex())
         try:
