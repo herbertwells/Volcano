@@ -1,6 +1,5 @@
 """Config flow for Volcano Integration."""
 import logging
-
 from homeassistant import config_entries
 from homeassistant.core import callback
 import voluptuous as vol
@@ -17,8 +16,14 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
+        _LOGGER.debug("Starting config flow for Volcano Integration.")
         if user_input is not None:
-            return self.async_create_entry(title="Volcano Vaporizer", data=user_input)
+            _LOGGER.debug("Received user input: %s", user_input)
+            try:
+                return self.async_create_entry(title="Volcano Vaporizer", data=user_input)
+            except Exception as e:
+                _LOGGER.error("Error during entry creation: %s", e)
+                raise
 
         return self.async_show_form(
             step_id="user",
@@ -46,4 +51,9 @@ class VolcanoOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage the Volcano options."""
-        return self.async_create_entry(title="", data=user_input or {})
+        _LOGGER.debug("Options flow init with user input: %s", user_input)
+        try:
+            return self.async_create_entry(title="", data=user_input or {})
+        except Exception as e:
+            _LOGGER.error("Error during options entry creation: %s", e)
+            raise
