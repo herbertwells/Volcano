@@ -15,6 +15,7 @@ MAX_TEMP = 230.0
 DEFAULT_TEMP = 170.0
 STEP = 1.0  # 1 °C increments
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano temperature number for a config entry."""
     _LOGGER.debug("Setting up Volcano number for entry: %s", entry.entry_id)
@@ -29,54 +30,49 @@ class VolcanoHeaterTempNumber(NumberEntity):
     """Number entity for setting the Volcano's heater temperature (40–230 °C)."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
+        super().__init__()
         self._manager = manager
         self._attr_name = "Volcano Heater Temperature Setpoint"
         self._attr_unique_id = "volcano_heater_temperature_setpoint"
         self._attr_icon = "mdi:thermometer"
-        self._attr_entity_category = None
+        self._attr_entity_category = EntityCategory.CONFIG
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
-            "via_device": None,
         }
 
-        # Set the allowed range
         self._attr_native_min_value = MIN_TEMP
         self._attr_native_max_value = MAX_TEMP
         self._attr_native_step = STEP
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-        self._temp_value = DEFAULT_TEMP  # Initialize to default
+        self._temp_value = DEFAULT_TEMP
 
     @property
     def native_value(self):
-        """
-        Return the current setpoint.
-        """
         return self._temp_value
-
-    async def async_set_native_value(self, value: float) -> None:
-        """
-        Called when the user sets a new temperature in the HA UI.
-        """
-        clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
-        _LOGGER.debug(
-            "User set heater temperature to %.1f °C -> clamped=%.1f",
-            value, clamped_val
-        )
-        self._temp_value = clamped_val
-
-        # Write the setpoint to the device
-        await self._manager.set_heater_temperature(clamped_val)
-
-        # Update the state in HA
-        self.async_write_ha_state()
 
     @property
     def available(self):
-        """Only available if BLE is connected."""
-        return (self._manager.bt_status == "CONNECTED")
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
+    async def async_set_native_value(self, value: float) -> None:
+        clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
+        _LOGGER.debug("User set heater temperature to %.1f °C -> clamped=%.1f", value, clamped_val)
+        self._temp_value = clamped_val
+        await self._manager.set_heater_temperature(clamped_val)
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register the temperature setpoint for state updates."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister the temperature setpoint to stop receiving updates."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
