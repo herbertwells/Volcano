@@ -27,7 +27,10 @@ VALID_PATTERNS = {
     (0x00, 0x00): ("OFF", "OFF"),
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
+    (0x23, 0x06): ("BURST_STARTED", "ON"),  # Start of burst
+    (0x23, 0x26): ("BURST_ENDED", "ON"),    # End of burst
 }
+
 
 
 class VolcanoBTManager:
@@ -152,38 +155,46 @@ class VolcanoBTManager:
             self.bt_status = err_str
             await asyncio.sleep(RECONNECT_INTERVAL)
 
-    async def _subscribe_pump_notifications(self):
-        """Subscribe to pump notifications (two-byte pattern)."""
-        if not self._connected or not self._client:
-            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
-            return
+    def notification_handler(sender: int, data: bytearray):
+    """Handle incoming notifications from the pump characteristic."""
+    _LOGGER.debug("Pump notification raw: %s", data.hex())
+    if len(data) >= 2:
+        b1, b2 = data[0], data[1]
+        _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
 
-        def notification_handler(sender: int, data: bytearray):
-            _LOGGER.debug("Pump notification raw: %s", data.hex())
-            if len(data) >= 2:
-                b1, b2 = data[0], data[1]
-                _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
-                if (b1, b2) in VALID_PATTERNS:
-                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
-                    self.heat_state = heat_val
-                    self.pump_state = pump_val
-                    _LOGGER.debug(
-                        "Parsed pump => heat=%s, pump=%s (pattern=(0x%02x, 0x%02x))",
-                        heat_val, pump_val, b1, b2
-                    )
-                else:
-                    self.heat_state = "UNKNOWN"
-                    self.pump_state = "UNKNOWN"
-                    _LOGGER.warning(
-                        "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
-                        b1, b2, data.hex()
-                    )
-            else:
-                self.heat_state = "UNKNOWN"
-                self.pump_state = "UNKNOWN"
-                _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
+        if (b1, b2) in VALID_PATTERNS:
+            heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
+            self.heat_state = heat_val
+            self.pump_state = pump_val
+            _LOGGER.info(
+                "Notification parsed -> heat=%s, pump=%s (pattern=(0x%02x, 0x%02x))",
+                heat_val, pump_val, b1, b2
+            )
 
-            self._notify_sensors()
+            if (b1, b2) == (0x23, 0x06):
+                _LOGGER.info(
+                    "Burst of air started (0x%02x, 0x%02x). Current temp: %.1f°C",
+                    b1, b2, self.current_temperature or -1
+                )
+            elif (b1, b2) == (0x23, 0x26):
+                _LOGGER.info(
+                    "Burst of air ended (0x%02x, 0x%02x). Current temp: %.1f°C",
+                    b1, b2, self.current_temperature or -1
+                )
+        else:
+            self.heat_state = "UNKNOWN"
+            self.pump_state = "UNKNOWN"
+            _LOGGER.warning(
+                "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
+                b1, b2, data.hex()
+            )
+    else:
+        self.heat_state = "UNKNOWN"
+        self.pump_state = "UNKNOWN"
+        _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
+
+    self._notify_sensors()
+
 
         try:
             _LOGGER.info("Subscribing to pump notifications on UUID %s", self.UUID_PUMP_NOTIFICATIONS)
