@@ -164,7 +164,6 @@ class VolcanoBTManager:
         self._connected = False
         self.bt_status = "DISCONNECTED"
 
----
 
 ### **Updated `sensor.py`**
 ```python
