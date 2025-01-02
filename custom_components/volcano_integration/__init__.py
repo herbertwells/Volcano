@@ -1,144 +1,207 @@
-"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
+"""Volcano Integration for Home Assistant."""
 import logging
+import asyncio
 
-from homeassistant.components.button import ButtonEntity
-from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+import voluptuous as vol
+
+from .bluetooth_coordinator import VolcanoBTManager
 
 _LOGGER = logging.getLogger(__name__)
 
+DOMAIN = "volcano_integration"
+PLATFORMS = ["sensor", "button", "number"]
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up Volcano buttons for a config entry."""
-    _LOGGER.debug("Setting up Volcano buttons for entry: %s", entry.entry_id)
+# Define service names
+SERVICE_CONNECT = "connect"
+SERVICE_DISCONNECT = "disconnect"
+SERVICE_PUMP_ON = "pump_on"
+SERVICE_PUMP_OFF = "pump_off"
+SERVICE_HEAT_ON = "heat_on"
+SERVICE_HEAT_OFF = "heat_off"
+SERVICE_SET_TEMPERATURE = "set_temperature"
 
-    manager = hass.data[DOMAIN][entry.entry_id]
+# Define schemas
+SET_TEMPERATURE_SCHEMA = vol.Schema({
+    vol.Optional("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
+    vol.Optional("percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+    vol.Optional("wait_until_reached", default=True): cv.boolean,
+})
 
-    entities = [
-        VolcanoConnectButton(manager),
-        VolcanoDisconnectButton(manager),
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up integration via YAML (if any)."""
+    return True
 
-        # Pump/Heat GATT write buttons
-        VolcanoPumpOnButton(manager),
-        VolcanoPumpOffButton(manager),
-        VolcanoHeatOnButton(manager),
-        VolcanoHeatOffButton(manager),
-    ]
-    async_add_entities(entities)
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up the Volcano Integration from a config entry."""
+    _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
+    manager = VolcanoBTManager()
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = manager
 
-class VolcanoBaseButton(ButtonEntity):
-    """Base button for the Volcano integration that references the BT manager."""
+    # Forward setup to sensor, button, and number platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    def __init__(self, manager):
-        super().__init__()  # Removed passing manager
-        self._manager = manager
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
+    # Register Services
+    async def handle_connect(call):
+        """Handle the connect service."""
+        _LOGGER.debug("Service 'connect' called.")
+        await manager.async_user_connect()
 
-    @property
-    def available(self):
-        """We can keep these always available so user can try them anytime."""
-        return True
+    async def handle_disconnect(call):
+        """Handle the disconnect service."""
+        _LOGGER.debug("Service 'disconnect' called.")
+        await manager.async_user_disconnect()
 
+    async def handle_pump_on(call):
+        """Handle the pump_on service."""
+        _LOGGER.debug("Service 'pump_on' called.")
+        await manager.write_gatt_command(manager.UUID_PUMP_ON, payload=b"\x01")
 
-class VolcanoConnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to connect BLE."""
+    async def handle_pump_off(call):
+        """Handle the pump_off service."""
+        _LOGGER.debug("Service 'pump_off' called.")
+        await manager.write_gatt_command(manager.UUID_PUMP_OFF, payload=b"\x00")
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Connect"
-        self._attr_unique_id = "volcano_connect_button"
-        self._attr_icon = "mdi:bluetooth-connect"
+    async def handle_heat_on(call):
+        """Handle the heat_on service."""
+        _LOGGER.debug("Service 'heat_on' called.")
+        await manager.write_gatt_command(manager.UUID_HEAT_ON, payload=b"\x01")
 
-    async def async_press(self) -> None:
-        """Called when user presses the Connect button in HA."""
-        _LOGGER.debug("VolcanoConnectButton: pressed by user.")
-        await self._manager.async_user_connect()
+    async def handle_heat_off(call):
+        """Handle the heat_off service."""
+        _LOGGER.debug("Service 'heat_off' called.")
+        await manager.write_gatt_command(manager.UUID_HEAT_OFF, payload=b"\x00")
 
+    async def handle_set_temperature(call):
+        """Handle the set_temperature service."""
+        temperature = call.data.get("temperature")
+        percentage = call.data.get("percentage")
+        wait = call.data.get("wait_until_reached", True)
 
-class VolcanoDisconnectButton(VolcanoBaseButton):
-    """A button to force the Volcano integration to disconnect BLE."""
+        if percentage is not None:
+            # Convert percentage to temperature (0% -> 40°C, 100% -> 230°C)
+            temperature = int(40 + (percentage / 100) * (230 - 40))
+            _LOGGER.debug(f"Percentage {percentage}% converted to temperature {temperature}°C")
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Disconnect"
-        self._attr_unique_id = "volcano_disconnect_button"
-        self._attr_icon = "mdi:bluetooth-off"
+        if temperature is None:
+            _LOGGER.error("No valid temperature or percentage provided for set_temperature.")
+            return
 
-    async def async_press(self) -> None:
-        """Called when user presses the Disconnect button in HA."""
-        _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
-        await self._manager.async_user_disconnect()
+        _LOGGER.debug(f"Service 'set_temperature' called with temperature={temperature}, wait={wait}")
+        await manager.set_heater_temperature(temperature)
+        if wait:
+            await wait_for_temperature(hass, manager, temperature)
 
+    async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
+        """Wait until the current temperature reaches or exceeds the target temperature."""
+        timeout = 300  # 5 minutes
+        elapsed_time = 0
+        _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
+        while elapsed_time < timeout:
+            if manager.current_temperature is not None:
+                _LOGGER.debug(
+                    f"Current temperature is {manager.current_temperature}°C; target is {target_temp}°C"
+                )
+                if manager.current_temperature >= target_temp:
+                    _LOGGER.info(f"Target temperature {target_temp}°C reached.")
+                    return
+            else:
+                _LOGGER.warning("Current temperature is None; retrying...")
+            await asyncio.sleep(0.5)  # Poll every 500 ms
+            elapsed_time += 0.5
+        _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-# ---------------------------------------------------------------------------
-#  Pump On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoPumpOnButton(VolcanoBaseButton):
-    """A button to turn Pump ON by writing to a GATT characteristic."""
+    async def handle_unknown_pump_pattern(manager, b1, b2, data):
+        """Log unknown pump patterns and provide additional diagnostics."""
+        _LOGGER.debug(
+            "Raw values received: 0x%02x, 0x%02x. Full data: %s",
+            b1, b2, data.hex()
+        )
+        if (b1, b2) == (0x23, 0x06):
+            _LOGGER.info(
+                "Received 'burst of air' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
+                b1, b2, manager.current_temperature, manager.target_temperature
+            )
+        elif (b1, b2) == (0x23, 0x26):
+            _LOGGER.info(
+                "Received 'end of burst' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
+                b1, b2, manager.current_temperature, manager.target_temperature
+            )
+        else:
+            _LOGGER.warning(
+                "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
+                b1, b2, data.hex()
+            )
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Pump On"
-        self._attr_unique_id = "volcano_pump_on_button"
-        self._attr_icon = "mdi:air-purifier"
+    # Register each service with Home Assistant
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CONNECT,
+        handle_connect,
+    )
 
-    async def async_press(self) -> None:
-        """Called when user presses the Pump On button."""
-        _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_ON, payload=b"\x01")
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_DISCONNECT,
+        handle_disconnect,
+    )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_PUMP_ON,
+        handle_pump_on,
+    )
 
-class VolcanoPumpOffButton(VolcanoBaseButton):
-    """A button to turn Pump OFF by writing to a GATT characteristic."""
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_PUMP_OFF,
+        handle_pump_off,
+    )
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Pump Off"
-        self._attr_unique_id = "volcano_pump_off_button"
-        self._attr_icon = "mdi:air-purifier-off"
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_HEAT_ON,
+        handle_heat_on,
+    )
 
-    async def async_press(self) -> None:
-        """Called when user presses the Pump Off button."""
-        _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_OFF, payload=b"\x00")
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_HEAT_OFF,
+        handle_heat_off,
+    )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_TEMPERATURE,
+        handle_set_temperature,
+        schema=SET_TEMPERATURE_SCHEMA,
+    )
 
-# ---------------------------------------------------------------------------
-#  Heat On/Off Buttons
-# ---------------------------------------------------------------------------
-class VolcanoHeatOnButton(VolcanoBaseButton):
-    """A button to turn Heat ON by writing to a GATT characteristic."""
+    # Start the Bluetooth manager
+    await manager.start()
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat On"
-        self._attr_unique_id = "volcano_heat_on_button"
-        self._attr_icon = "mdi:fire"
+    return True
 
-    async def async_press(self) -> None:
-        """Called when user presses the Heat On button."""
-        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_ON, payload=b"\x01")
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload the Volcano Integration."""
+    _LOGGER.debug("Unloading Volcano Integration entry: %s", entry.entry_id)
 
+    manager = hass.data[DOMAIN].pop(entry.entry_id, None)
+    if manager:
+        await manager.stop()
 
-class VolcanoHeatOffButton(VolcanoBaseButton):
-    """A button to turn Heat OFF by writing to a GATT characteristic."""
+    # Unregister services
+    hass.services.async_remove(DOMAIN, SERVICE_CONNECT)
+    hass.services.async_remove(DOMAIN, SERVICE_DISCONNECT)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_ON)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_OFF)
+    hass.services.async_remove(DOMAIN, SERVICE_HEAT_ON)
+    hass.services.async_remove(DOMAIN, SERVICE_HEAT_OFF)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat Off"
-        self._attr_unique_id = "volcano_heat_off_button"
-        self._attr_icon = "mdi:fire-off"
-
-    async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
+    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return True
