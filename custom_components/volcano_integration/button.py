@@ -3,6 +3,12 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
 from .bluetooth_coordinator import BT_DEVICE_ADDRESS
+from .const import (
+    UUID_PUMP_ON,
+    UUID_PUMP_OFF,
+    UUID_HEAT_ON,
+    UUID_HEAT_OFF,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +108,7 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoPumpOnButton pressed.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_ON, payload=b"\x01")
+        await self._manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
 
 
 class VolcanoPumpOffButton(VolcanoBaseButton):
@@ -122,7 +128,7 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoPumpOffButton pressed.")
-        await self._manager.write_gatt_command(self._manager.UUID_PUMP_OFF, payload=b"\x00")
+        await self._manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
 
 
 class VolcanoHeatOnButton(VolcanoBaseButton):
@@ -142,7 +148,7 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoHeatOnButton pressed.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_ON, payload=b"\x01")
+        await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
 
 
 class VolcanoHeatOffButton(VolcanoBaseButton):
@@ -162,4 +168,4 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoHeatOffButton pressed.")
-        await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
+        await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
