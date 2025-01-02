@@ -9,26 +9,20 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
-        _LOGGER.debug("Config flow initiated for Volcano Integration.")
-        try:
-            # Automatically create the entry without requiring input
-            return self.async_create_entry(title="Volcano Vaporizer", data={})
-        except Exception as e:
-            _LOGGER.error("Error creating config entry: %s", e)
-            raise
+        _LOGGER.debug("Initiating Volcano Integration config flow.")
+        # Directly proceed to creating the entry
+        return self.async_create_entry(title="Volcano Vaporizer", data={})
 
     @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        """Get the options flow for this handler."""
+    async def async_get_options_flow(config_entry):
+        """Options flow handler."""
         return VolcanoOptionsFlowHandler(config_entry)
 
 class VolcanoOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Volcano Integration."""
+    """Handle Volcano Integration options."""
 
     def __init__(self, config_entry):
         """Initialize options flow."""
@@ -36,9 +30,5 @@ class VolcanoOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage the Volcano options."""
-        _LOGGER.debug("Options flow initiated for Volcano Integration.")
-        try:
-            return self.async_create_entry(title="", data={})
-        except Exception as e:
-            _LOGGER.error("Error creating options entry: %s", e)
-            raise
+        _LOGGER.debug("Initiating options flow.")
+        return self.async_create_entry(title="", data=user_input or {})
