@@ -52,11 +52,12 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = "DISCONNECTED"
+        self._bt_status = "DISCONNECTED"  # Initialize here
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
+        self.slot_bluetooth_error = False  # Track slot BT errors
 
         # Define UUIDs as instance attributes
         self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"                # Current Temperature
@@ -156,7 +157,12 @@ class VolcanoBTManager:
                 await asyncio.sleep(RECONNECT_INTERVAL)
 
         except BleakError as e:
-            _LOGGER.error("Bluetooth connect error: %s -> Retrying...", e)
+            # Log slot-specific errors as ERROR
+            if "slot Bluetooth" in str(e):
+                self.slot_bluetooth_error = True
+                _LOGGER.error("Critical slot Bluetooth error: %s", e)
+            else:
+                _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = "ERROR"
             await asyncio.sleep(RECONNECT_INTERVAL)
 
@@ -241,7 +247,7 @@ class VolcanoBTManager:
             try:
                 await self._client.disconnect()
             except BleakError as e:
-                _LOGGER.error("Error during disconnect: %s", e)
+                _LOGGER.warning("Bluetooth disconnection warning: %s", e)
 
         self._client = None
         self._connected = False
