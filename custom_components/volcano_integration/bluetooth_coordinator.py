@@ -1,12 +1,5 @@
-"""Bluetooth Coordinator for the Volcano Integration.
+"""Bluetooth Coordinator for the Volcano Integration."""
 
-- References to 'fan' changed to 'pump'.
-- Fixes FutureWarnings by using property-based access.
-- Adds functionality to set heater temperature.
-- Handles Pump and Heat On/Off commands asynchronously.
-- Connection managed via Connect/Disconnect buttons.
-- Implements services for button actions and set_temperature.
-"""
 import asyncio
 import logging
 
@@ -52,7 +45,7 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = "DISCONNECTED"  # Explicitly initialize to DISCONNECTED
+        self._bt_status = "DISCONNECTED"  # Explicitly initialize as DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
@@ -83,7 +76,7 @@ class VolcanoBTManager:
             self._sensors.remove(sensor_entity)
 
     async def start(self):
-        """Start the Bluetooth manager."""
+        """Start the Bluetooth manager (only on user request)."""
         if not self._run_task or self._run_task.done():
             self._stop_event.clear()
             self._run_task = asyncio.create_task(self._run())
@@ -152,39 +145,6 @@ class VolcanoBTManager:
                 _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = "ERROR"
             await asyncio.sleep(RECONNECT_INTERVAL)
-
-    async def _subscribe_pump_notifications(self):
-        """Subscribe to pump notifications."""
-        if not self._connected:
-            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
-            return
-
-        def notification_handler(sender, data):
-            """Handle incoming notifications."""
-            _LOGGER.debug("Pump notification raw: %s", data.hex())
-            if len(data) >= 2:
-                b1, b2 = data[0], data[1]
-                _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
-                if (b1, b2) in VALID_PATTERNS:
-                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
-                    self.heat_state = heat_val if heat_val != "UNKNOWN" else f"0x{b1:02X}"
-                    self.pump_state = pump_val if pump_val != "UNKNOWN" else f"0x{b2:02X}"
-                    _LOGGER.info("Parsed notification -> heat=%s, pump=%s", self.heat_state, self.pump_state)
-                else:
-                    self.heat_state = f"0x{b1:02X}"
-                    self.pump_state = f"0x{b2:02X}"
-                    _LOGGER.warning("Unknown pump pattern received: 0x%02x, 0x%02x", b1, b2)
-            else:
-                self.heat_state = "UNKNOWN"
-                self.pump_state = "UNKNOWN"
-                _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
-
-            self._notify_sensors()
-
-        try:
-            await self._client.start_notify(self.UUID_PUMP_NOTIFICATIONS, notification_handler)
-        except BleakError as e:
-            _LOGGER.error("Error subscribing to notifications: %s", e)
 
     async def _poll_temperature(self):
         """Poll temperature at regular intervals."""
