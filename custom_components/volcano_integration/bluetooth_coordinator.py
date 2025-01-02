@@ -155,7 +155,7 @@ class VolcanoBTManager:
             self.bt_status = err_str
             await asyncio.sleep(RECONNECT_INTERVAL)
 
-    def notification_handler(sender: int, data: bytearray):
+def notification_handler(sender: int, data: bytearray):
     """Handle incoming notifications from the pump characteristic."""
     _LOGGER.debug("Pump notification raw: %s", data.hex())
     if len(data) >= 2:
