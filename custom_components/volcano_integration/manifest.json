@@ -1,17 +1,23 @@
 {
   "domain": "volcano_integration",
   "name": "Volcano Integration",
-  "version": "1.7.9",
+  "version": "1.8.0",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
   "issue_tracker": "https://github.com/Chuffnugget/volcano_integration/issues",
-  "requirements": [
-    "bleak>=0.20.0"
-  ],
   "dependencies": [],
   "codeowners": ["@Chuffnugget"],
-  "iot_class": "local_push",
+  "iot_class": "local_polling",
   "config_flow": true,
   "supports_entry_removal": true,
   "logo": "images/logo.png",
-  "icon": "images/icon.png"
+  "icon": "images/icon.png",
+  "requirements": [
+    "bleak>=0.20.0"
+  ],
+  "keywords": [
+    "Volcano",
+    "Bluetooth",
+    "Vaporizer",
+    "Temperature Control"
+  ]
 }
