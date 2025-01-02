@@ -27,8 +27,8 @@ VALID_PATTERNS = {
     (0x00, 0x00): ("OFF", "OFF"),
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
-    (0x23, 0x06): ("ON - TARGET MET (BURSTING)", "ON"),  # Start of burst
-    (0x23, 0x26): ("ON - TARGET MET", "ON"),    # End of burst
+    (0x23, 0x06): ("ON - TARGET MET", "ON"),  # Start of burst
+    (0x23, 0x26): ("ON - TARGET MET (BURSTING)", "ON"),    # End of burst
 }
 
 
