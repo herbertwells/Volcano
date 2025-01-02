@@ -27,7 +27,7 @@ SERVICE_SET_TEMPERATURE = "set_temperature"
 SET_TEMPERATURE_SCHEMA = vol.Schema({
     vol.Optional("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
     vol.Optional("percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-    vol.Optional("wait_until_reached", default=False): cv.boolean,
+    vol.Optional("wait_until_reached", default=True): cv.boolean,
 })
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -80,7 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         """Handle the set_temperature service."""
         temperature = call.data.get("temperature")
         percentage = call.data.get("percentage")
-        wait = call.data.get("wait_until_reached")
+        wait = call.data.get("wait_until_reached", True)
 
         if percentage is not None:
             # Convert percentage to temperature (0% -> 40°C, 100% -> 230°C)
