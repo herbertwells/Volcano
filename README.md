@@ -1,58 +1,96 @@
-
 # Volcano Integration for Home Assistant
 
-Control and monitor your **Storz & Bickel Volcano Hybrid Vaporizer** directly from Home Assistant with this custom integration. Enjoy seamless automation, real-time updates, and convenient control of your vaporizer’s key features.
+A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation.
+
+---
 
 ## Features
 
-- **Set Heater Temperature**: Adjust the target temperature (40–230°C) with precision.
-- **Control the Pump and Heater**: Turn the pump and heater on or off.
-- **Real-Time Status Monitoring**:
-  - Current temperature
-  - Heater status (ON/OFF/UNKNOWN)
-  - Pump status (ON/OFF/UNKNOWN)
-  - Bluetooth connection status (DISCONNECTED/CONNECTING/CONNECTED/ERROR)
+- **Temperature Control**: Set the heater temperature between 40°C and 230°C with 1°C precision.
+- **Pump Control**: Turn the pump ON or OFF to start or stop air circulation.
+- **Real-Time Temperature Monitoring**: Monitor the current heater temperature in real-time.
+- **Bluetooth Status**: View the current Bluetooth connection status (Connected, Disconnected, etc.).
+- **Full Automation Support**: Automate heat, pump, and temperature settings using Home Assistant scripts or automations.
+- **User-Friendly Services**: Use built-in Home Assistant services to control the vaporizer.
+
+---
+
+## Requirements
+
+- **Bluetooth Hardware**: The host system must have Bluetooth hardware or a compatible USB Bluetooth adapter.
+- **Python Dependency**: Requires the `bleak` library (minimum version 0.20.0).
+
+---
 
 ## Installation
 
-1. **Download and Add Files**:
-   - Clone or download this repository.
-   - Place the `volcano_integration` folder into your Home Assistant `custom_components` directory.
+1. **Download the Integration**:
+   - Clone or download the repository from GitHub: [GitHub Repository](https://github.com/Chuffnugget/volcano_integration).
 
-2. **Restart Home Assistant**:
-   - Go to **Settings** > **System** > **Restart**.
+2. **Place in Custom Components**:
+   - Extract the files and place the `volcano_integration` folder in the `custom_components` directory within your Home Assistant configuration directory.
 
-3. **Add the Integration**:
-   - Navigate to **Settings** > **Devices & Services**.
-   - Click **Add Integration** and search for `Volcano Integration`.
+3. **Install Dependencies**:
+   - Ensure the required dependencies (e.g., `bleak`) are installed. Home Assistant should handle this automatically.
 
-4. **Configure**:
-   - Provide the Bluetooth address for your Volcano Vaporizer during setup.
+4. **Restart Home Assistant**:
+   - After placing the files, restart Home Assistant.
 
-## Key Entities
+5. **Add the Integration**:
+   - Navigate to **Settings > Integrations > Add Integration**, search for "Volcano Integration," and follow the setup instructions.
 
-### Sensors
-- **Current Temperature**: Displays the vaporizer’s real-time temperature.
-- **Heater Status**: Indicates the heater state (`ON`, `OFF`, or `UNKNOWN`).
-- **Pump Status**: Shows the pump state (`ON`, `OFF`, or `UNKNOWN`).
-- **Bluetooth Status**: Displays the connection status.
+---
 
-### Controls
-- **Heater Temperature Setpoint**: Adjust the target temperature.
-- **Pump and Heater Buttons**: Control the pump and heater directly.
+## Usage
 
-## Automate Your Experience
+### Entities
 
-Leverage Home Assistant automations to optimize your Volcano experience. For example:
-- Automatically preheat your vaporizer in the morning.
-- Turn off the pump and heater when your session ends.
+- **Sensors**:
+  - Current Temperature: Displays the current temperature of the vaporizer.
+  - Heat Status: Shows whether the heater is ON, OFF, or in an unknown state.
+  - Pump Status: Indicates if the pump is ON, OFF, or in an unknown state.
+  - Bluetooth Status: Displays the current Bluetooth connection status.
 
-## Troubleshooting
+- **Buttons**:
+  - Connect: Establishes a Bluetooth connection with the vaporizer.
+  - Disconnect: Ends the Bluetooth connection.
+  - Pump On/Off: Turns the pump ON or OFF.
+  - Heat On/Off: Turns the heater ON or OFF.
 
-- Ensure the vaporizer’s Bluetooth is active and discoverable.
-- Check the logs in Home Assistant for any connection errors.
-- Verify the Bluetooth address matches your device.
+- **Number Control**:
+  - Heater Temperature Setpoint: Allows setting the desired temperature between 40°C and 230°C.
 
-## Contributing
+### Services
 
-We welcome contributions! Submit a pull request or open an issue on our [GitHub repository](https://github.com/Chuffnugget/volcano_integration).
+- `volcano_integration.connect`: Connect to the vaporizer.
+- `volcano_integration.disconnect`: Disconnect from the vaporizer.
+- `volcano_integration.pump_on`: Turn the pump ON.
+- `volcano_integration.pump_off`: Turn the pump OFF.
+- `volcano_integration.heat_on`: Turn the heater ON.
+- `volcano_integration.heat_off`: Turn the heater OFF.
+- `volcano_integration.set_temperature`: Set the heater temperature.
+
+---
+
+## Uninstall
+
+1. **Remove the Integration**:
+   - Navigate to **Settings > Integrations** and remove the "Volcano Integration."
+
+2. **Delete Files**:
+   - Delete the `volcano_integration` folder from the `custom_components` directory.
+
+3. **Restart Home Assistant**:
+   - Restart Home Assistant to finalize the uninstallation process.
+
+---
+
+## Support
+
+For issues or feature requests, visit the [GitHub Issues](https://github.com/Chuffnugget/volcano_integration/issues) page.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
