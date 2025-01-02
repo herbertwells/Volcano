@@ -1,6 +1,5 @@
 """Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
 import logging
-
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
 from .bluetooth_coordinator import BT_DEVICE_ADDRESS
@@ -44,7 +43,7 @@ class VolcanoBaseButton(ButtonEntity):
 
     @property
     def available(self):
-        """Base buttons remain always available unless overridden."""
+        """Default availability for buttons."""
         return True
 
 
