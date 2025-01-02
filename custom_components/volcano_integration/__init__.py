@@ -117,6 +117,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     async def handle_unknown_pump_pattern(manager, b1, b2, data):
         """Log unknown pump patterns and provide additional diagnostics."""
+        _LOGGER.debug(
+            "Raw values received: 0x%02x, 0x%02x. Full data: %s",
+            b1, b2, data.hex()
+        )
         if (b1, b2) in [(0x23, 0x06), (0x23, 0x26)]:
             _LOGGER.info(
                 "Special pump pattern detected (0x%02x, 0x%02x). Possible target temperature reached.",
