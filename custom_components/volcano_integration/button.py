@@ -16,8 +16,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         VolcanoConnectButton(manager),
         VolcanoDisconnectButton(manager),
-
-        # Pump/Heat GATT write buttons
         VolcanoPumpOnButton(manager),
         VolcanoPumpOffButton(manager),
         VolcanoHeatOnButton(manager),
@@ -43,8 +41,18 @@ class VolcanoBaseButton(ButtonEntity):
 
     @property
     def available(self):
-        """Default availability for buttons."""
+        """Default availability for buttons. Override in subclasses if needed."""
         return True
+
+    async def async_added_to_hass(self):
+        """Ensure state updates are triggered when the entity is added."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Clean up when the entity is removed."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
 
 
 class VolcanoConnectButton(VolcanoBaseButton):
@@ -56,9 +64,9 @@ class VolcanoConnectButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_connect_button"
         self._attr_icon = "mdi:bluetooth-connect"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Connect button in HA."""
-        _LOGGER.debug("VolcanoConnectButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoConnectButton pressed.")
         await self._manager.async_user_connect()
 
 
@@ -71,15 +79,12 @@ class VolcanoDisconnectButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_disconnect_button"
         self._attr_icon = "mdi:bluetooth-off"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Disconnect button in HA."""
-        _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoDisconnectButton pressed.")
         await self._manager.async_user_disconnect()
 
 
-# ---------------------------------------------------------------------------
-#  Pump On/Off Buttons
-# ---------------------------------------------------------------------------
 class VolcanoPumpOnButton(VolcanoBaseButton):
     """A button to turn Pump ON by writing to a GATT characteristic."""
 
@@ -94,9 +99,9 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
         """Available only when Bluetooth is connected."""
         return self._manager.bt_status == "CONNECTED"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Pump On button."""
-        _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoPumpOnButton pressed.")
         await self._manager.write_gatt_command(self._manager.UUID_PUMP_ON, payload=b"\x01")
 
 
@@ -114,15 +119,12 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
         """Available only when Bluetooth is connected."""
         return self._manager.bt_status == "CONNECTED"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Pump Off button."""
-        _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoPumpOffButton pressed.")
         await self._manager.write_gatt_command(self._manager.UUID_PUMP_OFF, payload=b"\x00")
 
 
-# ---------------------------------------------------------------------------
-#  Heat On/Off Buttons
-# ---------------------------------------------------------------------------
 class VolcanoHeatOnButton(VolcanoBaseButton):
     """A button to turn Heat ON by writing to a GATT characteristic."""
 
@@ -137,9 +139,9 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
         """Available only when Bluetooth is connected."""
         return self._manager.bt_status == "CONNECTED"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Heat On button."""
-        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoHeatOnButton pressed.")
         await self._manager.write_gatt_command(self._manager.UUID_HEAT_ON, payload=b"\x01")
 
 
@@ -157,7 +159,7 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
         """Available only when Bluetooth is connected."""
         return self._manager.bt_status == "CONNECTED"
 
-    async def async_press(self) -> None:
-        """Called when user presses the Heat Off button."""
-        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
+    async def async_press(self):
+        """Handle button press."""
+        _LOGGER.debug("VolcanoHeatOffButton pressed.")
         await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
