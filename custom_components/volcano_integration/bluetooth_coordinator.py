@@ -52,7 +52,7 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = "DISCONNECTED"  # Initialize here
+        self._bt_status = "DISCONNECTED"  # Default to DISCONNECTED at startup
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
@@ -141,7 +141,7 @@ class VolcanoBTManager:
         """Attempt to connect to the BLE device."""
         try:
             _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
-            self.bt_status = "CONNECTING"
+            self.bt_status = "CONNECTING"  # Only set when actually attempting
             self._client = BleakClient(BT_DEVICE_ADDRESS)
             await self._client.connect()
 
@@ -180,16 +180,12 @@ class VolcanoBTManager:
                 _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
                 if (b1, b2) in VALID_PATTERNS:
                     heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
-                    self.heat_state = heat_val
-                    self.pump_state = pump_val
-                    _LOGGER.info("Parsed notification -> heat=%s, pump=%s", heat_val, pump_val)
-                    if (b1, b2) == (0x23, 0x06):
-                        _LOGGER.info("Burst of air started at %.1f°C", self.current_temperature or -1)
-                    elif (b1, b2) == (0x23, 0x26):
-                        _LOGGER.info("Burst of air ended at %.1f°C", self.current_temperature or -1)
+                    self.heat_state = heat_val if heat_val != "UNKNOWN" else f"0x{b1:02X}"
+                    self.pump_state = pump_val if pump_val != "UNKNOWN" else f"0x{b2:02X}"
+                    _LOGGER.info("Parsed notification -> heat=%s, pump=%s", self.heat_state, self.pump_state)
                 else:
-                    self.heat_state = "UNKNOWN"
-                    self.pump_state = "UNKNOWN"
+                    self.heat_state = f"0x{b1:02X}"
+                    self.pump_state = f"0x{b2:02X}"
                     _LOGGER.warning("Unknown pump pattern received: 0x%02x, 0x%02x", b1, b2)
             else:
                 self.heat_state = "UNKNOWN"
