@@ -96,6 +96,22 @@ class VolcanoBTManager:
             except asyncio.CancelledError:
                 pass
 
+    async def async_user_connect(self):
+        """Explicitly initiate a connection to the BLE device."""
+        _LOGGER.debug("User requested connection to the Volcano device.")
+        if self._connected:
+            _LOGGER.info("Already connected to the device.")
+            return
+        await self.start()
+
+    async def async_user_disconnect(self):
+        """Explicitly disconnect from the BLE device."""
+        _LOGGER.debug("User requested disconnection from the Volcano device.")
+        if not self._connected:
+            _LOGGER.info("Already disconnected from the device.")
+            return
+        await self.stop()
+
     async def _run(self):
         """Main loop to manage Bluetooth connection."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
