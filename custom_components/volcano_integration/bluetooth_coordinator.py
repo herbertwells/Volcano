@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-
 from bleak import BleakClient, BleakError
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,10 +19,9 @@ VALID_PATTERNS = {
     (0x00, 0x00): ("OFF", "OFF"),
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
-    (0x23, 0x06): ("BURST_STARTED", "ON"),
-    (0x23, 0x26): ("BURST_ENDED", "ON"),
+    (0x23, 0x06): ("BURST_STARTED", "ON"),  # Start of burst
+    (0x23, 0x26): ("BURST_ENDED", "ON"),    # End of burst
 }
-
 
 class VolcanoBTManager:
     """
@@ -45,12 +43,21 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = "DISCONNECTED"  # Explicitly initialize as DISCONNECTED
+        self._bt_status = "DISCONNECTED"
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
         self.slot_bluetooth_error = False
+
+        # UUIDs
+        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"                # Current Temperature
+        self.UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
+        self.UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
+        self.UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
+        self.UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
+        self.UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
+        self.UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
     @property
     def bt_status(self):
@@ -93,7 +100,7 @@ class VolcanoBTManager:
                 await self._temp_poll_task
             except asyncio.CancelledError:
                 pass
-        self.bt_status = "DISCONNECTED"  # Explicitly set status on stop
+        self.bt_status = "DISCONNECTED"
 
     async def async_user_connect(self):
         """Explicitly initiate a connection to the BLE device."""
@@ -145,6 +152,33 @@ class VolcanoBTManager:
                 _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = "ERROR"
             await asyncio.sleep(RECONNECT_INTERVAL)
+
+    async def _subscribe_pump_notifications(self):
+        """Subscribe to pump notifications."""
+        if not self._connected:
+            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
+            return
+
+        def notification_handler(sender, data):
+            """Handle incoming notifications."""
+            _LOGGER.debug("Pump notification raw: %s", data.hex())
+            if len(data) >= 2:
+                b1, b2 = data[0], data[1]
+                _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
+                if (b1, b2) in VALID_PATTERNS:
+                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
+                    self.heat_state = heat_val
+                    self.pump_state = pump_val
+                    _LOGGER.info("Parsed notification -> heat=%s, pump=%s", heat_val, pump_val)
+                else:
+                    self.heat_state = f"UNKNOWN: 0x{b1:02x}"
+                    self.pump_state = f"UNKNOWN: 0x{b2:02x}"
+            self._notify_sensors()
+
+        try:
+            await self._client.start_notify(self.UUID_PUMP_NOTIFICATIONS, notification_handler)
+        except BleakError as e:
+            _LOGGER.error("Error subscribing to notifications: %s", e)
 
     async def _poll_temperature(self):
         """Poll temperature at regular intervals."""
