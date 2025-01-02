@@ -27,8 +27,8 @@ VALID_PATTERNS = {
     (0x00, 0x00): ("OFF", "OFF"),
     (0x00, 0x30): ("OFF", "ON"),
     (0x23, 0x30): ("ON", "ON"),
-    (0x23, 0x06): ("BURST_STARTED", "ON"),  # Start of burst
-    (0x23, 0x26): ("BURST_ENDED", "ON"),    # End of burst
+    (0x23, 0x06): ("BURST_STARTED", "ON"),
+    (0x23, 0x26): ("BURST_ENDED", "ON"),
 }
 
 
@@ -52,15 +52,12 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self._bt_status = None  # Initialize as None to ensure proper setup
+        self._bt_status = "DISCONNECTED"  # Explicitly initialize to DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
         self.slot_bluetooth_error = False
-
-        # Set the initial status to DISCONNECTED after setup completes
-        self.bt_status = "DISCONNECTED"
 
     @property
     def bt_status(self):
@@ -103,6 +100,7 @@ class VolcanoBTManager:
                 await self._temp_poll_task
             except asyncio.CancelledError:
                 pass
+        self.bt_status = "DISCONNECTED"  # Explicitly set status on stop
 
     async def async_user_connect(self):
         """Explicitly initiate a connection to the BLE device."""
@@ -135,11 +133,10 @@ class VolcanoBTManager:
         """Attempt to connect to the BLE device."""
         try:
             _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
-            self.bt_status = "CONNECTING"  # Only set when actually attempting
+            self.bt_status = "CONNECTING"
             self._client = BleakClient(BT_DEVICE_ADDRESS)
             await self._client.connect()
 
-            _LOGGER.debug("Services discovered: %s", self._client.services)
             self._connected = self._client.is_connected
 
             if self._connected:
@@ -148,12 +145,8 @@ class VolcanoBTManager:
                 await self._subscribe_pump_notifications()
             else:
                 self.bt_status = "DISCONNECTED"
-                await asyncio.sleep(RECONNECT_INTERVAL)
-
         except BleakError as e:
-            # Log slot-specific errors as ERROR
             if "slot Bluetooth" in str(e):
-                self.slot_bluetooth_error = True
                 _LOGGER.error("Critical slot Bluetooth error: %s", e)
             else:
                 _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
@@ -203,26 +196,16 @@ class VolcanoBTManager:
     async def _read_temperature(self):
         """Read the temperature characteristic."""
         if not self._connected or not self._client:
-            _LOGGER.debug("Not connected -> skipping temperature read.")
             return
-
         try:
             data = await self._client.read_gatt_char(self.UUID_TEMP)
-            _LOGGER.debug("Read temperature raw bytes: %s", data.hex())
-
-            if len(data) < 2:
-                _LOGGER.warning("Temperature data too short: %d bytes", len(data))
-                self.current_temperature = None
-            else:
+            if len(data) >= 2:
                 raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
                 self.current_temperature = raw_16 / 10.0
-                _LOGGER.debug("Parsed temperature = %.1f °C (raw=%d)", self.current_temperature, raw_16)
-
             self._notify_sensors()
-
         except BleakError as e:
             _LOGGER.error("Error reading temperature: %s -> disconnect & retry...", e)
-            self.bt_status = f"ERROR: {e}"
+            self.bt_status = "ERROR"
             await self._disconnect()
 
     def _notify_sensors(self):
@@ -231,18 +214,15 @@ class VolcanoBTManager:
             sensor_entity.schedule_update_ha_state(True)
 
     async def _disconnect(self):
-        """Disconnect from the BLE device so we can attempt to reconnect next cycle."""
+        """Disconnect from the BLE device."""
         if self._client:
-            _LOGGER.debug("Disconnecting from device %s.", BT_DEVICE_ADDRESS)
             try:
                 await self._client.disconnect()
             except BleakError as e:
                 _LOGGER.warning("Bluetooth disconnection warning: %s", e)
-
         self._client = None
         self._connected = False
         self.bt_status = "DISCONNECTED"
-        _LOGGER.info("Disconnected from device %s.", BT_DEVICE_ADDRESS)
 
     async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
         """Write a payload to a GATT characteristic to control Pump/Heat."""
