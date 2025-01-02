@@ -67,6 +67,19 @@ class VolcanoBTManager:
         self.UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
         self.UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
+    @property
+    def bt_status(self):
+        """Return the current Bluetooth status."""
+        return self._bt_status
+
+    @bt_status.setter
+    def bt_status(self, value):
+        """Set the Bluetooth status and notify sensors/buttons."""
+        if self._bt_status != value:
+            _LOGGER.debug("BT status changed from %s to %s", self._bt_status, value)
+            self._bt_status = value
+            self._notify_sensors()
+
     def register_sensor(self, sensor_entity):
         """Register a sensor to receive updates."""
         if sensor_entity not in self._sensors:
