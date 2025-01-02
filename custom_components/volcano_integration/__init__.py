@@ -1,250 +1,144 @@
-"""Bluetooth Coordinator for the Volcano Integration.
-
-- References to 'fan' changed to 'pump'.
-- Fixes FutureWarnings by using property-based access.
-- Adds functionality to set heater temperature.
-- Handles Pump and Heat On/Off commands asynchronously.
-- Connection managed via Connect/Disconnect buttons.
-- Implements services for button actions and set_temperature.
-"""
-import asyncio
+"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
 import logging
 
-from bleak import BleakClient, BleakError
+from homeassistant.components.button import ButtonEntity
+from . import DOMAIN
+from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
-# Replace with your device's MAC address
-BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
 
-# Timings
-RECONNECT_INTERVAL = 3      # Seconds before attempting to reconnect
-TEMP_POLL_INTERVAL = 1      # Seconds between temperature polls
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Volcano buttons for a config entry."""
+    _LOGGER.debug("Setting up Volcano buttons for entry: %s", entry.entry_id)
 
-# Pump patterns: (heat_byte, pump_byte)
-VALID_PATTERNS = {
-    (0x23, 0x00): ("ON", "OFF"),
-    (0x00, 0x00): ("OFF", "OFF"),
-    (0x00, 0x30): ("OFF", "ON"),
-    (0x23, 0x30): ("ON", "ON"),
-    (0x23, 0x06): ("BURST_STARTED", "ON"),  # Start of burst
-    (0x23, 0x26): ("BURST_ENDED", "ON"),    # End of burst
-}
+    manager = hass.data[DOMAIN][entry.entry_id]
+
+    entities = [
+        VolcanoConnectButton(manager),
+        VolcanoDisconnectButton(manager),
+
+        # Pump/Heat GATT write buttons
+        VolcanoPumpOnButton(manager),
+        VolcanoPumpOffButton(manager),
+        VolcanoHeatOnButton(manager),
+        VolcanoHeatOffButton(manager),
+    ]
+    async_add_entities(entities)
 
 
-class VolcanoBTManager:
-    """
-    Manages Bluetooth communication with the Volcano device.
+class VolcanoBaseButton(ButtonEntity):
+    """Base button for the Volcano integration that references the BT manager."""
 
-    Responsibilities:
-      - Connects to the device.
-      - Polls temperature every TEMP_POLL_INTERVAL seconds.
-      - Subscribes to pump notifications.
-      - Handles Pump and Heat On/Off commands.
-      - Allows setting the heater temperature.
-      - Manages connection status and reconnection logic.
-      - Provides services for button actions and set_temperature.
-    """
+    def __init__(self, manager):
+        super().__init__()  # Removed passing manager
+        self._manager = manager
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
 
-    def __init__(self):
-        self._client = None
-        self._connected = False
-        self.current_temperature = None
-        self.heat_state = None
-        self.pump_state = None
-        self.bt_status = "DISCONNECTED"
-        self._run_task = None
-        self._temp_poll_task = None
-        self._stop_event = asyncio.Event()
-        self._sensors = []
+    @property
+    def available(self):
+        """We can keep these always available so user can try them anytime."""
+        return True
 
-        # Define UUIDs as instance attributes
-        self.UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"                # Current Temperature
-        self.UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
-        self.UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
-        self.UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
-        self.UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
 
-    def register_sensor(self, sensor_entity):
-        """Register a sensor to receive updates."""
-        if sensor_entity not in self._sensors:
-            self._sensors.append(sensor_entity)
+class VolcanoConnectButton(VolcanoBaseButton):
+    """A button to force the Volcano integration to connect BLE."""
 
-    def unregister_sensor(self, sensor_entity):
-        """Unregister a sensor from receiving updates."""
-        if sensor_entity in self._sensors:
-            self._sensors.remove(sensor_entity)
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Connect"
+        self._attr_unique_id = "volcano_connect_button"
+        self._attr_icon = "mdi:bluetooth-connect"
 
-    async def start(self):
-        """Start the Bluetooth manager."""
-        if not self._run_task or self._run_task.done():
-            self._stop_event.clear()
-            self._run_task = asyncio.create_task(self._run())
-            self._temp_poll_task = asyncio.create_task(self._poll_temperature())
+    async def async_press(self) -> None:
+        """Called when user presses the Connect button in HA."""
+        _LOGGER.debug("VolcanoConnectButton: pressed by user.")
+        await self._manager.async_user_connect()
 
-    async def stop(self):
-        """Stop the Bluetooth manager."""
-        if self._run_task and not self._run_task.done():
-            self._stop_event.set()
-            await self._run_task
-        if self._temp_poll_task and not self._temp_poll_task.done():
-            self._temp_poll_task.cancel()
-            try:
-                await self._temp_poll_task
-            except asyncio.CancelledError:
-                pass
 
-    async def _run(self):
-        """Main loop to manage Bluetooth connection."""
-        _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
-        while not self._stop_event.is_set():
-            if not self._connected:
-                await self._connect()
-            await asyncio.sleep(1)
+class VolcanoDisconnectButton(VolcanoBaseButton):
+    """A button to force the Volcano integration to disconnect BLE."""
 
-        _LOGGER.debug("Exiting VolcanoBTManager._run() -> disconnecting.")
-        await self._disconnect()
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Disconnect"
+        self._attr_unique_id = "volcano_disconnect_button"
+        self._attr_icon = "mdi:bluetooth-off"
 
-    async def _connect(self):
-        """Attempt to connect to the BLE device."""
-        try:
-            _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
-            self.bt_status = "CONNECTING"
-            self._client = BleakClient(BT_DEVICE_ADDRESS)
-            await self._client.connect()
+    async def async_press(self) -> None:
+        """Called when user presses the Disconnect button in HA."""
+        _LOGGER.debug("VolcanoDisconnectButton: pressed by user.")
+        await self._manager.async_user_disconnect()
 
-            _LOGGER.debug("Services discovered: %s", self._client.services)
-            self._connected = self._client.is_connected
 
-            if self._connected:
-                _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
-                self.bt_status = "CONNECTED"
-                await self._subscribe_pump_notifications()
-            else:
-                self.bt_status = "DISCONNECTED"
-                await asyncio.sleep(RECONNECT_INTERVAL)
+# ---------------------------------------------------------------------------
+#  Pump On/Off Buttons
+# ---------------------------------------------------------------------------
+class VolcanoPumpOnButton(VolcanoBaseButton):
+    """A button to turn Pump ON by writing to a GATT characteristic."""
 
-        except BleakError as e:
-            _LOGGER.error("Bluetooth connect error: %s -> Retrying...", e)
-            self.bt_status = "ERROR"
-            await asyncio.sleep(RECONNECT_INTERVAL)
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Pump On"
+        self._attr_unique_id = "volcano_pump_on_button"
+        self._attr_icon = "mdi:air-purifier"
 
-    async def _subscribe_pump_notifications(self):
-        """Subscribe to pump notifications."""
-        if not self._connected:
-            _LOGGER.error("Cannot subscribe to pump notifications: not connected.")
-            return
+    async def async_press(self) -> None:
+        """Called when user presses the Pump On button."""
+        _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
+        await self._manager.write_gatt_command(self._manager.UUID_PUMP_ON, payload=b"\x01")
 
-        def notification_handler(sender, data):
-            """Handle incoming notifications."""
-            _LOGGER.debug("Pump notification raw: %s", data.hex())
-            if len(data) >= 2:
-                b1, b2 = data[0], data[1]
-                _LOGGER.debug("Received bytes: 0x%02x, 0x%02x", b1, b2)
-                if (b1, b2) in VALID_PATTERNS:
-                    heat_val, pump_val = VALID_PATTERNS[(b1, b2)]
-                    self.heat_state = heat_val
-                    self.pump_state = pump_val
-                    _LOGGER.info("Parsed notification -> heat=%s, pump=%s", heat_val, pump_val)
-                    if (b1, b2) == (0x23, 0x06):
-                        _LOGGER.info("Burst of air started at %.1f°C", self.current_temperature or -1)
-                    elif (b1, b2) == (0x23, 0x26):
-                        _LOGGER.info("Burst of air ended at %.1f°C", self.current_temperature or -1)
-                else:
-                    self.heat_state = "UNKNOWN"
-                    self.pump_state = "UNKNOWN"
-                    _LOGGER.warning("Unknown pump pattern received: 0x%02x, 0x%02x", b1, b2)
-            else:
-                self.heat_state = "UNKNOWN"
-                self.pump_state = "UNKNOWN"
-                _LOGGER.warning("Pump notification too short: %d byte(s).", len(data))
 
-            self._notify_sensors()
+class VolcanoPumpOffButton(VolcanoBaseButton):
+    """A button to turn Pump OFF by writing to a GATT characteristic."""
 
-        try:
-            await self._client.start_notify(self.UUID_PUMP_NOTIFICATIONS, notification_handler)
-        except BleakError as e:
-            _LOGGER.error("Error subscribing to notifications: %s", e)
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Pump Off"
+        self._attr_unique_id = "volcano_pump_off_button"
+        self._attr_icon = "mdi:air-purifier-off"
 
-    async def _poll_temperature(self):
-        """Poll temperature at regular intervals."""
-        while not self._stop_event.is_set():
-            if self._connected:
-                await self._read_temperature()
-            await asyncio.sleep(TEMP_POLL_INTERVAL)
+    async def async_press(self) -> None:
+        """Called when user presses the Pump Off button."""
+        _LOGGER.debug("VolcanoPumpOffButton: pressed by user.")
+        await self._manager.write_gatt_command(self._manager.UUID_PUMP_OFF, payload=b"\x00")
 
-    async def _read_temperature(self):
-        """Read the temperature characteristic."""
-        if not self._connected or not self._client:
-            _LOGGER.debug("Not connected -> skipping temperature read.")
-            return
 
-        try:
-            data = await self._client.read_gatt_char(self.UUID_TEMP)
-            _LOGGER.debug("Read temperature raw bytes: %s", data.hex())
+# ---------------------------------------------------------------------------
+#  Heat On/Off Buttons
+# ---------------------------------------------------------------------------
+class VolcanoHeatOnButton(VolcanoBaseButton):
+    """A button to turn Heat ON by writing to a GATT characteristic."""
 
-            if len(data) < 2:
-                _LOGGER.warning("Temperature data too short: %d bytes", len(data))
-                self.current_temperature = None
-            else:
-                raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
-                self.current_temperature = raw_16 / 10.0
-                _LOGGER.debug("Parsed temperature = %.1f °C (raw=%d)", self.current_temperature, raw_16)
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Heat On"
+        self._attr_unique_id = "volcano_heat_on_button"
+        self._attr_icon = "mdi:fire"
 
-            self._notify_sensors()
+    async def async_press(self) -> None:
+        """Called when user presses the Heat On button."""
+        _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
+        await self._manager.write_gatt_command(self._manager.UUID_HEAT_ON, payload=b"\x01")
 
-        except BleakError as e:
-            _LOGGER.error("Error reading temperature: %s -> disconnect & retry...", e)
-            self.bt_status = f"ERROR: {e}"
-            await self._disconnect()
 
-    def _notify_sensors(self):
-        """Notify all registered sensors that new data is available."""
-        for sensor_entity in self._sensors:
-            sensor_entity.schedule_update_ha_state(True)
+class VolcanoHeatOffButton(VolcanoBaseButton):
+    """A button to turn Heat OFF by writing to a GATT characteristic."""
 
-    async def _disconnect(self):
-        """Disconnect from the BLE device so we can attempt to reconnect next cycle."""
-        if self._client:
-            _LOGGER.debug("Disconnecting from device %s.", BT_DEVICE_ADDRESS)
-            try:
-                await self._client.disconnect()
-            except BleakError as e:
-                _LOGGER.error("Error during disconnect: %s", e)
+    def __init__(self, manager):
+        super().__init__(manager)
+        self._attr_name = "Volcano Heat Off"
+        self._attr_unique_id = "volcano_heat_off_button"
+        self._attr_icon = "mdi:fire-off"
 
-        self._client = None
-        self._connected = False
-        self.bt_status = "DISCONNECTED"
-        _LOGGER.info("Disconnected from device %s.", BT_DEVICE_ADDRESS)
-
-    async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
-        """Write a payload to a GATT characteristic to control Pump/Heat."""
-        if not self._connected or not self._client:
-            _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
-            return
-
-        try:
-            _LOGGER.debug("Writing GATT char %s -> payload %s", write_uuid, payload.hex())
-            await self._client.write_gatt_char(write_uuid, payload)
-            _LOGGER.info("Successfully wrote to %s", write_uuid)
-        except BleakError as e:
-            _LOGGER.error("Error writing to %s: %s", write_uuid, e)
-
-    async def set_heater_temperature(self, temp_c: float):
-        """Write the temperature setpoint to the heater's GATT characteristic."""
-        if not self._connected or not self._client:
-            _LOGGER.warning("Cannot set heater temperature - not connected.")
-            return
-
-        safe_temp = max(40.0, min(temp_c, 230.0))
-        setpoint_int = int(safe_temp * 10)
-        setpoint_bytes = setpoint_int.to_bytes(2, byteorder="little", signed=False)
-
-        _LOGGER.debug("Writing heater temperature=%.1f °C -> raw=%s", safe_temp, setpoint_bytes.hex())
-        try:
-            await self._client.write_gatt_char(self.UUID_HEATER_SETPOINT, setpoint_bytes)
-            _LOGGER.info("Heater setpoint updated to %.1f °C", safe_temp)
-        except BleakError as e:
-            _LOGGER.error("Error writing heater temp: %s", e)
+    async def async_press(self) -> None:
+        """Called when user presses the Heat Off button."""
+        _LOGGER.debug("VolcanoHeatOffButton: pressed by user.")
+        await self._manager.write_gatt_command(self._manager.UUID_HEAT_OFF, payload=b"\x00")
