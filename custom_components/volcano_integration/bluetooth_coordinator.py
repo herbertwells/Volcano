@@ -89,33 +89,33 @@ class VolcanoBTManager:
 
     async def _connect(self):
         """Attempt to connect to the BLE device."""
-        try:
-            _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
-            self.bt_status = "CONNECTING"
+        while not self._connected and not self._stop_event.is_set():
+            try:
+                _LOGGER.info("Connecting to Bluetooth device %s...", BT_DEVICE_ADDRESS)
+                self.bt_status = "CONNECTING"
 
-            async with BleakClient(BT_DEVICE_ADDRESS) as client:
-                self._client = client
-                self._connected = client.is_connected
+                async with BleakClient(BT_DEVICE_ADDRESS) as client:
+                    self._client = client
+                    self._connected = client.is_connected
 
-                if self._connected:
-                    _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
-                    self.bt_status = "CONNECTED"
-                    self.reconnect_interval = RECONNECT_INTERVAL_INITIAL  # Reset interval
-                    await self._subscribe_pump_notifications()
+                    if self._connected:
+                        _LOGGER.info("Bluetooth connected to %s", BT_DEVICE_ADDRESS)
+                        self.bt_status = "CONNECTED"
+                        self.reconnect_interval = RECONNECT_INTERVAL_INITIAL  # Reset interval
+                        await self._subscribe_pump_notifications()
+                        return  # Exit the loop once connected
+            except BleakError as e:
+                if "No backend with an available connection slot" in str(e):
+                    _LOGGER.error("Bluetooth backend issue: %s", e)
                 else:
-                    raise BleakError("Failed to establish a connection.")
-        except BleakError as e:
-            if "No backend with an available connection slot" in str(e):
-                _LOGGER.error("Bluetooth backend issue: %s", e)
-            else:
-                _LOGGER.error("Bluetooth connect error: %s", e)
+                    _LOGGER.error("Bluetooth connect error: %s", e)
 
-            _LOGGER.debug("Retrying connection in %d seconds", self.reconnect_interval)
-            self.bt_status = "DISCONNECTED"
-            await asyncio.sleep(self.reconnect_interval)
-            self.reconnect_interval = min(
-                self.reconnect_interval * 2, MAX_RECONNECT_INTERVAL
-            )
+                _LOGGER.debug("Retrying connection in %d seconds", self.reconnect_interval)
+                self.bt_status = "DISCONNECTED"
+                await asyncio.sleep(self.reconnect_interval)
+                self.reconnect_interval = min(
+                    self.reconnect_interval * 2, MAX_RECONNECT_INTERVAL
+                )
 
     async def _subscribe_pump_notifications(self):
         if not self._connected or not self._client:
