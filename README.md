@@ -1,68 +1,58 @@
-# Volcano Integration
 
-**Volcano Integration** allows you to control and monitor your Volcano Vaporizer directly from Home Assistant.
+# Volcano Integration for Home Assistant
+
+Control and monitor your **Storz & Bickel Volcano Hybrid Vaporizer** directly from Home Assistant with this custom integration. Enjoy seamless automation, real-time updates, and convenient control of your vaporizer’s key features.
 
 ## Features
 
-- Monitor current temperature
-- Control pump (ON/OFF)
-- Control heat (ON/OFF)
-- Set heater temperature
+- **Set Heater Temperature**: Adjust the target temperature (40–230°C) with precision.
+- **Control the Pump and Heater**: Turn the pump and heater on or off.
+- **Real-Time Status Monitoring**:
+  - Current temperature
+  - Heater status (ON/OFF/UNKNOWN)
+  - Pump status (ON/OFF/UNKNOWN)
+  - Bluetooth connection status (DISCONNECTED/CONNECTING/CONNECTED/ERROR)
 
 ## Installation
 
-### Via HACS (Recommended)
+1. **Download and Add Files**:
+   - Clone or download this repository.
+   - Place the `volcano_integration` folder into your Home Assistant `custom_components` directory.
 
-1. Ensure you have [HACS](https://hacs.xyz/) installed in your Home Assistant setup.
-2. Navigate to **HACS > Integrations**.
-3. Click the **+** button to add a new integration.
-4. Search for **Volcano Integration** and install it.
-5. Restart Home Assistant.
+2. **Restart Home Assistant**:
+   - Go to **Settings** > **System** > **Restart**.
 
-### Manual Installation
+3. **Add the Integration**:
+   - Navigate to **Settings** > **Devices & Services**.
+   - Click **Add Integration** and search for `Volcano Integration`.
 
-1. Download the repository as a ZIP file.
-2. Extract the contents and place the `volcano_integration` folder inside the `custom_components` directory of your Home Assistant configuration.
-3. Restart Home Assistant.
+4. **Configure**:
+   - Provide the Bluetooth address for your Volcano Vaporizer during setup.
 
-## Configuration
+## Key Entities
 
-1. Navigate to **Configuration > Integrations** in Home Assistant.
-2. Click **Add Integration** and search for **Volcano Integration**.
-3. Enter the required information:
-   - **Name:** Volcano Vaporizer
-   - **MAC Address:** Your device's MAC address (format: XX:XX:XX:XX:XX:XX)
-4. Complete the setup and restart Home Assistant if prompted.
+### Sensors
+- **Current Temperature**: Displays the vaporizer’s real-time temperature.
+- **Heater Status**: Indicates the heater state (`ON`, `OFF`, or `UNKNOWN`).
+- **Pump Status**: Shows the pump state (`ON`, `OFF`, or `UNKNOWN`).
+- **Bluetooth Status**: Displays the connection status.
 
-## Usage
+### Controls
+- **Heater Temperature Setpoint**: Adjust the target temperature.
+- **Pump and Heater Buttons**: Control the pump and heater directly.
 
-- **Sensors:**
-  - **Volcano Current Temperature:** Displays the current temperature of the device.
-  - **Volcano Heat Status:** Shows whether the heat is ON or OFF.
-  - **Volcano Pump Status:** Indicates the pump's current state (ON/OFF).
-  - **Volcano Bluetooth Status:** Shows the Bluetooth connection status.
+## Automate Your Experience
 
-- **Buttons:**
-  - **Volcano Connect:** Manually connect the device.
-  - **Volcano Disconnect:** Manually disconnect the device.
-  - **Volcano Pump On:** Turn the pump ON.
-  - **Volcano Pump Off:** Turn the pump OFF.
-  - **Volcano Heat On:** Turn the heat ON.
-  - **Volcano Heat Off:** Turn the heat OFF.
-
-- **Number:**
-  - **Volcano Heater Temperature Setpoint:** Set the desired heater temperature (40–230 °C).
+Leverage Home Assistant automations to optimize your Volcano experience. For example:
+- Automatically preheat your vaporizer in the morning.
+- Turn off the pump and heater when your session ends.
 
 ## Troubleshooting
 
-- **Icon Not Displaying Correctly:** Ensure that both `icon` and `logo` are correctly specified in `manifest.json`.
-- **Connection Issues:** Verify the MAC address and ensure the device is powered on and within Bluetooth range.
-- **Unknown Pump/Heat Patterns:** Check the logs for any new byte patterns and update `VALID_PATTERNS` accordingly.
+- Ensure the vaporizer’s Bluetooth is active and discoverable.
+- Check the logs in Home Assistant for any connection errors.
+- Verify the Bluetooth address matches your device.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
-
-## License
-
-[MIT License](LICENSE)
+We welcome contributions! Submit a pull request or open an issue on our [GitHub repository](https://github.com/Chuffnugget/volcano_integration).
