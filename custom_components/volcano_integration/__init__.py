@@ -25,7 +25,7 @@ SERVICE_SET_TEMPERATURE = "set_temperature"
 
 # Define schemas
 SET_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Required("temperature"): vol.All(vol.Coerce(float), vol.Range(min=40.0, max=230.0)),
+    vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
     vol.Optional("wait_until_reached", default=False): cv.boolean,
 })
 
@@ -84,7 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         if wait:
             await wait_for_temperature(hass, manager, temperature)
 
-    async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: float):
+    async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
         """Wait until the current temperature reaches or exceeds the target temperature."""
         timeout = 300  # 5 minutes
         elapsed_time = 0
