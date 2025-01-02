@@ -105,7 +105,11 @@ class VolcanoBTManager:
                 else:
                     raise BleakError("Failed to establish a connection.")
         except BleakError as e:
-            _LOGGER.error("Bluetooth connect error: %s", e)
+            if "No backend with an available connection slot" in str(e):
+                _LOGGER.error("Bluetooth backend issue: %s", e)
+            else:
+                _LOGGER.error("Bluetooth connect error: %s", e)
+
             _LOGGER.debug("Retrying connection in %d seconds", self.reconnect_interval)
             self.bt_status = "DISCONNECTED"
             await asyncio.sleep(self.reconnect_interval)
@@ -147,8 +151,8 @@ class VolcanoBTManager:
             if self._connected:
                 await self._read_temperature()
             else:
-                _LOGGER.debug("Skipping temperature poll: not connected.")
-            await asyncio.sleep(TEMP_POLL_INTERVAL)
+                _LOGGER.debug("Suspending temperature polling as the device is not connected.")
+                await asyncio.sleep(self.reconnect_interval)
 
     async def _read_temperature(self):
         if not self._connected or not self._client:
