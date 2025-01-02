@@ -52,7 +52,7 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self.bt_status = "DISCONNECTED"
+        self._bt_status = "DISCONNECTED"
         self._run_task = None
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
