@@ -121,10 +121,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "Raw values received: 0x%02x, 0x%02x. Full data: %s",
             b1, b2, data.hex()
         )
-        if (b1, b2) in [(0x23, 0x06), (0x23, 0x26)]:
+        if (b1, b2) == (0x23, 0x06):
             _LOGGER.info(
-                "Special pump pattern detected (0x%02x, 0x%02x). Possible target temperature reached.",
-                b1, b2
+                "Received 'burst of air' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
+                b1, b2, manager.current_temperature, manager.target_temperature
+            )
+        elif (b1, b2) == (0x23, 0x26):
+            _LOGGER.info(
+                "Received 'end of burst' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
+                b1, b2, manager.current_temperature, manager.target_temperature
             )
         else:
             _LOGGER.warning(
