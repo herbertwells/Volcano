@@ -1,0 +1,31 @@
+set_temperature:
+  description: "Set the temperature of the Volcano vaporizer."
+  fields:
+    temperature:
+      name: "Temperature"
+      description: "The target temperature in °C (40-230)."
+      required: false
+      example: 170
+      selector:
+        number:
+          min: 40
+          max: 230
+          step: 1
+          unit_of_measurement: "°C"
+    percentage:
+      name: "Percentage"
+      description: "The target temperature as a percentage (0-100%)."
+      required: false
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    wait_until_reached:
+      name: "Wait Until Reached"
+      description: "Wait until the current temperature reaches the target."
+      required: false
+      default: false
+      selector:
+        boolean: {}
