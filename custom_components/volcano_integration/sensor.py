@@ -19,7 +19,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoCurrentTempSensor(manager),
         VolcanoHeatStatusSensor(manager),
         VolcanoPumpStatusSensor(manager),
-        VolcanoTemperatureTargetStatusSensor(manager),  # New sensor
         VolcanoBTStatusSensor(manager),
     ]
     async_add_entities(entities)
@@ -29,7 +28,7 @@ class VolcanoBaseSensor(SensorEntity):
     """Base sensor that registers/unregisters with the VolcanoBTManager."""
 
     def __init__(self, manager):
-        super().__init__()
+        super().__init__()  # Removed passing manager
         self._manager = manager
 
     async def async_added_to_hass(self):
@@ -72,7 +71,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
 
 class VolcanoHeatStatusSensor(VolcanoBaseSensor):
-    """Heat Status Sensor (ON/OFF)."""
+    """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -127,40 +126,13 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED")
 
 
-class VolcanoTemperatureTargetStatusSensor(VolcanoBaseSensor):
-    """Temperature Target Status Sensor (Target met, Bursting, Over Target, or Raw Code)."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Temperature Target Status"
-        self._attr_unique_id = "volcano_temperature_target_status"
-        self._attr_icon = "mdi:target"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def native_value(self):
-        val = self._manager.temperature_target_status
-        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
-        return val
-
-    @property
-    def available(self):
-        return (self._manager.bt_status == "CONNECTED")
-
-
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
     """Sensor that shows the current Bluetooth status/error string."""
 
     def __init__(self, manager):
         super().__init__(manager)
         self._attr_name = "Volcano Bluetooth Status"
+        self._attr_unique_id = "volcano_bt_status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
