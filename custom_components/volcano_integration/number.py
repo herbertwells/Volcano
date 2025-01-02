@@ -3,7 +3,6 @@ import logging
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
-from homeassistant.helpers.entity import EntityCategory
 
 from . import DOMAIN
 from .bluetooth_coordinator import BT_DEVICE_ADDRESS
@@ -35,7 +34,6 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_name = "Volcano Heater Temperature Setpoint"
         self._attr_unique_id = "volcano_heater_temperature_setpoint"
         self._attr_icon = "mdi:thermometer"
-        self._attr_entity_category = EntityCategory.CONFIG
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
