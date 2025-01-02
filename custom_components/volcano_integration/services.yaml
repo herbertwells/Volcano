@@ -24,8 +24,8 @@ set_temperature:
           step: 1
     wait_until_reached:
       name: "Wait Until Reached"
-      description: "Wait until the current temperature reaches the target."
+      description: "Whether to block until the target temperature is reached."
       required: false
-      default: false
+      default: true
       selector:
         boolean: {}
