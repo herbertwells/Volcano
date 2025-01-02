@@ -31,7 +31,7 @@ class VolcanoBaseButton(ButtonEntity):
     """Base button for the Volcano integration that references the BT manager."""
 
     def __init__(self, manager):
-        super().__init__()  # Removed passing manager
+        super().__init__()
         self._manager = manager
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
@@ -44,7 +44,7 @@ class VolcanoBaseButton(ButtonEntity):
 
     @property
     def available(self):
-        """We can keep these always available so user can try them anytime."""
+        """Base buttons remain always available unless overridden."""
         return True
 
 
@@ -90,6 +90,11 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_pump_on_button"
         self._attr_icon = "mdi:air-purifier"
 
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
     async def async_press(self) -> None:
         """Called when user presses the Pump On button."""
         _LOGGER.debug("VolcanoPumpOnButton: pressed by user.")
@@ -104,6 +109,11 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
         self._attr_name = "Volcano Pump Off"
         self._attr_unique_id = "volcano_pump_off_button"
         self._attr_icon = "mdi:air-purifier-off"
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self) -> None:
         """Called when user presses the Pump Off button."""
@@ -123,6 +133,11 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_heat_on_button"
         self._attr_icon = "mdi:fire"
 
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
     async def async_press(self) -> None:
         """Called when user presses the Heat On button."""
         _LOGGER.debug("VolcanoHeatOnButton: pressed by user.")
@@ -137,6 +152,11 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
         self._attr_name = "Volcano Heat Off"
         self._attr_unique_id = "volcano_heat_off_button"
         self._attr_icon = "mdi:fire-off"
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self) -> None:
         """Called when user presses the Heat Off button."""
