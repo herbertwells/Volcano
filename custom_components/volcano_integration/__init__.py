@@ -30,9 +30,11 @@ SET_TEMPERATURE_SCHEMA = vol.Schema({
     vol.Optional("wait_until_reached", default=True): cv.boolean,
 })
 
+
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up integration via YAML (if any)."""
     return True
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
@@ -49,12 +51,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_connect(call):
         """Handle the connect service."""
         _LOGGER.debug("Service 'connect' called.")
-        await manager.async_user_connect()
+        if not manager._connected:
+            await manager.async_user_connect()
+        else:
+            _LOGGER.info("Already connected to the device.")
 
     async def handle_disconnect(call):
         """Handle the disconnect service."""
         _LOGGER.debug("Service 'disconnect' called.")
-        await manager.async_user_disconnect()
+        if manager._connected:
+            await manager.async_user_disconnect()
+        else:
+            _LOGGER.info("Device already disconnected.")
 
     async def handle_pump_on(call):
         """Handle the pump_on service."""
@@ -115,76 +123,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             elapsed_time += 0.5
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    async def handle_unknown_pump_pattern(manager, b1, b2, data):
-        """Log unknown pump patterns and provide additional diagnostics."""
-        _LOGGER.debug(
-            "Raw values received: 0x%02x, 0x%02x. Full data: %s",
-            b1, b2, data.hex()
-        )
-        if (b1, b2) == (0x23, 0x06):
-            _LOGGER.info(
-                "Received 'burst of air' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
-                b1, b2, manager.current_temperature, manager.target_temperature
-            )
-        elif (b1, b2) == (0x23, 0x26):
-            _LOGGER.info(
-                "Received 'end of burst' notification: (0x%02x, 0x%02x). Current temp: %s°C, Target temp: %s°C",
-                b1, b2, manager.current_temperature, manager.target_temperature
-            )
-        else:
-            _LOGGER.warning(
-                "Unknown pump pattern (0x%02x, 0x%02x). Data received: %s",
-                b1, b2, data.hex()
-            )
-
     # Register each service with Home Assistant
+    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect)
+    hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_OFF, handle_pump_off)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_ON, handle_heat_on)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_OFF, handle_heat_off)
     hass.services.async_register(
-        DOMAIN,
-        SERVICE_CONNECT,
-        handle_connect,
+        DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_DISCONNECT,
-        handle_disconnect,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_PUMP_ON,
-        handle_pump_on,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_PUMP_OFF,
-        handle_pump_off,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_HEAT_ON,
-        handle_heat_on,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_HEAT_OFF,
-        handle_heat_off,
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_TEMPERATURE,
-        handle_set_temperature,
-        schema=SET_TEMPERATURE_SCHEMA,
-    )
-
-    # Start the Bluetooth manager
-    await manager.start()
 
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload the Volcano Integration."""
