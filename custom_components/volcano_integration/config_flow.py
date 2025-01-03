@@ -6,7 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOption
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOption, SelectSelectorMode
 
 from .const import DOMAIN
 from bleak import BleakScanner
@@ -56,7 +56,7 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         selector = SelectSelector(
             SelectSelectorConfig(
                 options=options,
-                mode="dropdown",
+                mode=SelectSelectorMode.DROPDOWN,  # Corrected from "dropdown" to SelectSelectorMode.DROPDOWN
                 custom_value=False,
             )
         )
@@ -65,9 +65,7 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "selected_device"
-                    ): selector
+                    vol.Required("selected_device"): selector
                 }
             ),
             errors={},
