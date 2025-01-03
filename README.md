@@ -1,7 +1,7 @@
 # Volcano Integration for Home Assistant
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Chuffnugget/volcano_integration/LICENSE)
-[![HACS Available](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
+[![HACS Available](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/Chuffnugget/volcano_integration/blob/master/LICENSE)
 
 
 **[HACS Available](https://hacs.xyz/)**
