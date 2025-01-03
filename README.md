@@ -1,5 +1,10 @@
 # Volcano Integration for Home Assistant
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![HACS Available](https://img.shields.io/badge/HACS-Default-orange.svg)
+
+**[HACS Available](https://hacs.xyz/)**
+
 **This integration is under heavy, active development. There may be multiple updates per day, possibly resulting in errors or disruption to the integration or Home Assistant. I will change this notice once the software is available for a proper release.**
 
 A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation.
@@ -9,7 +14,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 ## Features
 
 - **Temperature Control**: Set the heater temperature between 40°C and 230°C with 1°C precision.
-- **Pump Control**: Turn the pump ON or OFF to start or stop air circulation.
+- **Pump Control**: Turn the pump **ON** or **OFF** to start or stop air circulation.
 - **Real-Time Temperature Monitoring**: Monitor the current heater temperature in real-time.
 - **Bluetooth Status**: View the current Bluetooth connection status (Connected, Disconnected, etc.).
 - **Full Automation Support**: Automate heat, pump, and temperature settings using Home Assistant scripts or automations.
@@ -45,7 +50,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
    - After installation, restart Home Assistant to activate the integration.
 
 5. **Configure the Integration**:
-   - Navigate to **Settings > Integrations**, find **Volcano Integration**, and follow the setup instructions.
+   - Navigate to **Settings > Devices & Services**, find **Volcano Integration**, and follow the setup instructions.
 
 ### Manual Installation
 
@@ -62,7 +67,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
    - After placing the files, restart Home Assistant.
 
 5. **Add the Integration**:
-   - Navigate to **Settings > Integrations > Add Integration**, search for "Volcano Integration," and follow the setup instructions.
+   - Navigate to **Settings > Devices & Services > Add Integration**, search for "Volcano Integration," and follow the setup instructions.
 
 ---
 
@@ -72,15 +77,15 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 
 - **Sensors**:
   - **Current Temperature**: Displays the current temperature of the vaporizer.
-  - **Heat Status**: Shows whether the heater is ON, OFF, or in an unknown state.
-  - **Pump Status**: Indicates if the pump is ON, OFF, or in an unknown state.
+  - **Heat Status**: Shows whether the heater is **ON**, **OFF**, or in an unknown state.
+  - **Pump Status**: Indicates if the pump is **ON**, **OFF**, or in an unknown state.
   - **Bluetooth Status**: Displays the current Bluetooth connection status.
 
 - **Buttons**:
   - **Connect**: Establishes a Bluetooth connection with the vaporizer.
   - **Disconnect**: Ends the Bluetooth connection.
-  - **Pump On/Off**: Turns the pump ON or OFF.
-  - **Heat On/Off**: Turns the heater ON or OFF.
+  - **Pump On/Off**: Turns the pump **ON** or **OFF**.
+  - **Heat On/Off**: Turns the heater **ON** or **OFF**.
 
 - **Number Control**:
   - **Heater Temperature Setpoint**: Allows setting the desired temperature between 40°C and 230°C.
@@ -89,33 +94,25 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 
 - `volcano_integration.connect`: Connect to the vaporizer.
 - `volcano_integration.disconnect`: Disconnect from the vaporizer.
-- `volcano_integration.pump_on`: Turn the pump ON.
-- `volcano_integration.pump_off`: Turn the pump OFF.
-- `volcano_integration.heat_on`: Turn the heater ON.
-- `volcano_integration.heat_off`: Turn the heater OFF.
+- `volcano_integration.pump_on`: Turn the pump **ON**.
+- `volcano_integration.pump_off`: Turn the pump **OFF**.
+- `volcano_integration.heat_on`: Turn the heater **ON**.
+- `volcano_integration.heat_off`: Turn the heater **OFF**.
 - `volcano_integration.set_temperature`: Set the heater temperature.
 
----
+### Automations
 
-## Uninstall
+Leverage Home Assistant's automation capabilities to create routines. For example:
 
-1. **Remove the Integration**:
-   - Navigate to **Settings > Integrations** and remove the "Volcano Integration."
-
-2. **Delete Files**:
-   - Delete the `volcano_integration` folder from the `custom_components` directory.
-
-3. **Restart Home Assistant**:
-   - Restart Home Assistant to finalize the uninstallation process.
-
----
-
-## Support
-
-For issues or feature requests, visit the [GitHub Issues](https://github.com/Chuffnugget/volcano_integration/issues) page.
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+```yaml
+alias: "Turn On Volcano at 6 AM"
+trigger:
+  platform: time
+  at: "06:00:00"
+action:
+  - service: volcano_integration.connect
+  - service: volcano_integration.heat_on
+  - service: volcano_integration.set_temperature
+    data:
+      temperature: 180
+  - service: volcano_integration.pump_on
