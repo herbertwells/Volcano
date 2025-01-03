@@ -8,16 +8,10 @@ from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
 from .bluetooth_coordinator import VolcanoBTManager
-from .const import (
-    DOMAIN,
-    UUID_PUMP_ON,
-    UUID_PUMP_OFF,
-    UUID_HEAT_ON,
-    UUID_HEAT_OFF,
-)
 
 _LOGGER = logging.getLogger(__name__)
 
+DOMAIN = "volcano_integration"
 PLATFORMS = ["sensor", "button", "number"]
 
 # Define service names
@@ -28,12 +22,22 @@ SERVICE_PUMP_OFF = "pump_off"
 SERVICE_HEAT_ON = "heat_on"
 SERVICE_HEAT_OFF = "heat_off"
 SERVICE_SET_TEMPERATURE = "set_temperature"
+SERVICE_SET_BRIGHTNESS = "set_brightness"
+SERVICE_SET_AUTO_SHUTOFF = "set_auto_shutoff"
 
 # Define schemas
 SET_TEMPERATURE_SCHEMA = vol.Schema({
     vol.Optional("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
     vol.Optional("percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
     vol.Optional("wait_until_reached", default=True): cv.boolean,
+})
+
+SET_BRIGHTNESS_SCHEMA = vol.Schema({
+    vol.Required("brightness"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+})
+
+SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
+    vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
 })
 
 
@@ -73,22 +77,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_pump_on(call):
         """Handle the pump_on service."""
         _LOGGER.debug("Service 'pump_on' called.")
-        await manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
+        await manager.write_gatt_command(manager.UUID_PUMP_ON, payload=b"\x01")
 
     async def handle_pump_off(call):
         """Handle the pump_off service."""
         _LOGGER.debug("Service 'pump_off' called.")
-        await manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
+        await manager.write_gatt_command(manager.UUID_PUMP_OFF, payload=b"\x00")
 
     async def handle_heat_on(call):
         """Handle the heat_on service."""
         _LOGGER.debug("Service 'heat_on' called.")
-        await manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
+        await manager.write_gatt_command(manager.UUID_HEAT_ON, payload=b"\x01")
 
     async def handle_heat_off(call):
         """Handle the heat_off service."""
         _LOGGER.debug("Service 'heat_off' called.")
-        await manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
+        await manager.write_gatt_command(manager.UUID_HEAT_OFF, payload=b"\x00")
 
     async def handle_set_temperature(call):
         """Handle the set_temperature service."""
@@ -109,6 +113,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         await manager.set_heater_temperature(temperature)
         if wait:
             await wait_for_temperature(hass, manager, temperature)
+
+    async def handle_set_brightness(call):
+        """Handle the set_brightness service."""
+        brightness = call.data.get("brightness")
+        _LOGGER.debug(f"Service 'set_brightness' called with brightness={brightness}")
+        await manager.set_led_brightness(brightness)
+
+    async def handle_set_auto_shutoff(call):
+        """Handle the set_auto_shutoff service."""
+        minutes = call.data.get("minutes")
+        _LOGGER.debug(f"Service 'set_auto_shutoff' called with minutes={minutes}")
+        await manager.set_auto_shutoff_setting(minutes)
 
     async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
         """Wait until the current temperature reaches or exceeds the target temperature."""
@@ -139,6 +155,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_BRIGHTNESS, handle_set_brightness, schema=SET_BRIGHTNESS_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_AUTO_SHUTOFF, handle_set_auto_shutoff, schema=SET_AUTO_SHUTOFF_SCHEMA
+    )
 
     return True
 
@@ -159,6 +181,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_ON)
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_OFF)
     hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_BRIGHTNESS)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_AUTO_SHUTOFF)
 
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return True
