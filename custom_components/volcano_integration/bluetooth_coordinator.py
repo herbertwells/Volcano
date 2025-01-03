@@ -18,9 +18,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Replace with your device's MAC address
-BT_DEVICE_ADDRESS = "CE:9E:A6:43:25:F3"
-
 # Timings
 RECONNECT_INTERVAL = 3  # Seconds before attempting to reconnect
 TEMP_POLL_INTERVAL = 1  # Seconds between temperature polls
@@ -42,7 +39,8 @@ class VolcanoBTManager:
     Manages Bluetooth communication with the Volcano device.
     """
 
-    def __init__(self):
+    def __init__(self, bt_address: str):
+        self.bt_address = bt_address
         self._client = None
         self._connected = False
         self.current_temperature = None
@@ -127,14 +125,14 @@ class VolcanoBTManager:
     async def _connect(self):
         """Attempt to connect to the BLE device."""
         try:
-            _LOGGER.info("Attempting to connect to Bluetooth device %s...", BT_DEVICE_ADDRESS)
+            _LOGGER.info("Attempting to connect to Bluetooth device %s...", self.bt_address)
             self.bt_status = BT_STATUS_CONNECTING
-            self._client = BleakClient(BT_DEVICE_ADDRESS)
+            self._client = BleakClient(self.bt_address)
             await self._client.connect()
 
             self._connected = self._client.is_connected
             if self._connected:
-                _LOGGER.info("Bluetooth successfully connected to %s", BT_DEVICE_ADDRESS)
+                _LOGGER.info("Bluetooth successfully connected to %s", self.bt_address)
                 self.bt_status = BT_STATUS_CONNECTED
                 await self._subscribe_pump_notifications()
             else:
