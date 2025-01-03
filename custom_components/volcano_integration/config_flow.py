@@ -13,11 +13,17 @@ from bleak import BleakScanner
 
 _LOGGER = logging.getLogger(__name__)
 
+REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
+
 class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
+
+    def __init__(self):
+        """Initialize the config flow."""
+        self._discovered_devices = {}
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         """Handle the initial step of the config flow."""
@@ -25,6 +31,11 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             selected_address = user_input.get("selected_device")
+
+            if selected_address == REFRESH_OPTION_VALUE:
+                _LOGGER.debug("User requested to refresh device list.")
+                return await self.async_step_user()
+
             selected_device = self._discovered_devices.get(selected_address)
 
             if selected_device:
@@ -52,6 +63,9 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {"label": device.name or device.address, "value": device.address}
             for device in devices
         ]
+
+        # Add a 'Refresh device list' option
+        options.append({"label": "Refresh Device List", "value": REFRESH_OPTION_VALUE})
 
         selector = SelectSelector(
             SelectSelectorConfig(
