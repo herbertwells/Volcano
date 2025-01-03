@@ -9,7 +9,6 @@ from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano sensors for a config entry."""
     _LOGGER.debug("Setting up Volcano sensors for entry: %s", entry.entry_id)
@@ -21,7 +20,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoHeatStatusSensor(manager),
         VolcanoPumpStatusSensor(manager),
         VolcanoBTStatusSensor(manager),
-        VolcanoBLEFirmwareSensor(manager),
+        VolcanoBLEFirmwareVersionSensor(manager),
         VolcanoSerialNumberSensor(manager),
         VolcanoFirmwareVersionSensor(manager),
         VolcanoAutoShutOffSensor(manager),
@@ -63,6 +62,7 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
@@ -90,6 +90,7 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
@@ -117,6 +118,7 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
@@ -143,6 +145,7 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
@@ -156,103 +159,49 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
         return True
 
 
-class VolcanoBLEFirmwareSensor(VolcanoBaseSensor):
-    """Sensor for the BLE firmware version."""
+class VolcanoFirmwareSensor(VolcanoBaseSensor):
+    """Base class for firmware-related sensors."""
 
-    def __init__(self, manager):
+    def __init__(self, manager, name, unique_id, attr_name):
         super().__init__(manager)
-        self._attr_name = "Volcano BLE Firmware Version"
-        self._attr_unique_id = "volcano_ble_firmware_version"
+        self._attr_name = name
+        self._attr_unique_id = unique_id
+        self._attr_icon = "mdi:chip"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
             "name": "Volcano Vaporizer",
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
         }
+        self._attr_name = attr_name
 
     @property
     def native_value(self):
-        val = self._manager.ble_firmware_version or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read BLE firmware version.")
-        return val
+        return self._manager.ble_firmware_version or "UNKNOWN"
+
+    @property
+    def available(self):
+        return True
 
 
-class VolcanoSerialNumberSensor(VolcanoBaseSensor):
-    """Sensor for the serial number."""
+class VolcanoBLEFirmwareVersionSensor(VolcanoFirmwareSensor):
+    """BLE Firmware Version Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Serial Number"
-        self._attr_unique_id = "volcano_serial_number"
-
-    @property
-    def native_value(self):
-        val = self._manager.serial_number or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read serial number.")
-        return val
+        super().__init__(
+            manager,
+            "Volcano BLE Firmware Version",
+            "volcano_ble_firmware_version",
+            "BLE Firmware Version",
+        )
 
 
-class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
-    """Sensor for the Volcano firmware version."""
+class VolcanoSerialNumberSensor(VolcanoFirmwareSensor):
+    """Serial Number Sensor."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Firmware Version"
-        self._attr_unique_id = "volcano_firmware_version"
-
-    @property
-    def native_value(self):
-        val = self._manager.firmware_version or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read Volcano firmware version.")
-        return val
+    def __init__(self):
+        pass
 
 
-class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
-    """Sensor for the Auto Shut Off."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Auto Shut Off"
-        self._attr_unique_id = "volcano_auto_shut_off"
-
-    @property
-    def native_value(self):
-        val = self._manager.auto_shut_off or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read Auto Shut Off.")
-        return val
-
-
-class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
-    """Sensor for the Auto Shut Off Setting."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Auto Shut Off Setting"
-        self._attr_unique_id = "volcano_auto_shut_off_setting"
-
-    @property
-    def native_value(self):
-        val = self._manager.auto_shut_off_setting or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read Auto Shut Off Setting.")
-        return val
-
-
-class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
-    """Sensor for the LED Brightness."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano LED Brightness"
-        self._attr_unique_id = "volcano_led_brightness"
-
-    @property
-    def native_value(self):
-        val = self._manager.led_brightness or "UNKNOWN"
-        if val == "UNKNOWN":
-            _LOGGER.warning("Failed to read LED Brightness.")
-        return val
