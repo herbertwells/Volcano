@@ -46,7 +46,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
     _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
-    manager = VolcanoBTManager()
+    bt_address = entry.data.get("bt_address")
+    device_name = entry.data.get("device_name", "Volcano Vaporizer")
+
+    manager = VolcanoBTManager(bt_address)
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
@@ -139,6 +142,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
+
+    # Start the Bluetooth manager
+    await manager.start()
 
     return True
 
