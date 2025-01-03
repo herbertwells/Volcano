@@ -1,8 +1,14 @@
-"""Platform for button integration - Adds fan, heat, and custom control buttons."""
+"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
 import logging
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
 from .bluetooth_coordinator import BT_DEVICE_ADDRESS
+from .const import (
+    UUID_PUMP_ON,
+    UUID_PUMP_OFF,
+    UUID_HEAT_ON,
+    UUID_HEAT_OFF,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,12 +42,23 @@ class VolcanoBaseButton(ButtonEntity):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
     @property
     def available(self):
-        """Default availability for buttons."""
-        return self._manager.bt_status == "CONNECTED"
+        """Default availability for buttons. Override in subclasses if needed."""
+        return True
+
+    async def async_added_to_hass(self):
+        """Ensure state updates are triggered when the entity is added."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Clean up when the entity is removed."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
 
 
 class VolcanoConnectButton(VolcanoBaseButton):
@@ -83,6 +100,11 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_pump_on_button"
         self._attr_icon = "mdi:air-purifier"
 
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoPumpOnButton pressed.")
@@ -97,6 +119,11 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
         self._attr_name = "Volcano Pump Off"
         self._attr_unique_id = "volcano_pump_off_button"
         self._attr_icon = "mdi:air-purifier-off"
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
         """Handle button press."""
@@ -113,6 +140,11 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
         self._attr_unique_id = "volcano_heat_on_button"
         self._attr_icon = "mdi:fire"
 
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
     async def async_press(self):
         """Handle button press."""
         _LOGGER.debug("VolcanoHeatOnButton pressed.")
@@ -127,6 +159,11 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
         self._attr_name = "Volcano Heat Off"
         self._attr_unique_id = "volcano_heat_off_button"
         self._attr_icon = "mdi:fire-off"
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
         """Handle button press."""
