@@ -6,7 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOption, SelectSelectorMode
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
 from .const import DOMAIN
 from bleak import BleakScanner
@@ -47,16 +47,16 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Map devices by address for easy lookup
         self._discovered_devices = {device.address: device for device in devices}
 
-        # Create a list of SelectOption for the selector
+        # Create a list of dictionaries for the selector
         options = [
-            SelectOption(label=device.name or device.address, value=device.address)
+            {"label": device.name or device.address, "value": device.address}
             for device in devices
         ]
 
         selector = SelectSelector(
             SelectSelectorConfig(
                 options=options,
-                mode=SelectSelectorMode.DROPDOWN,  # Corrected from "dropdown" to SelectSelectorMode.DROPDOWN
+                mode=SelectSelectorMode.DROPDOWN,
                 custom_value=False,
             )
         )
