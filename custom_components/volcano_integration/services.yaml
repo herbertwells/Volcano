@@ -29,33 +29,3 @@ set_temperature:
       default: true
       selector:
         boolean: {}
-
-set_brightness:
-  description: "Set the LED brightness of the Volcano vaporizer."
-  fields:
-    brightness:
-      name: "Brightness"
-      description: "The LED brightness as a percentage (0-100%)."
-      required: true
-      example: 50
-      selector:
-        number:
-          min: 0
-          max: 100
-          step: 1
-          unit_of_measurement: "%"
-
-set_auto_shutoff:
-  description: "Set the auto shutoff time for the Volcano vaporizer."
-  fields:
-    minutes:
-      name: "Auto Shutoff Time"
-      description: "The auto shutoff time in minutes (1-240)."
-      required: true
-      example: 15
-      selector:
-        number:
-          min: 1
-          max: 240
-          step: 1
-          unit_of_measurement: "min"
