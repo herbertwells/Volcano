@@ -40,6 +40,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
+            "via_device": None,
         }
 
         self._attr_native_min_value = MIN_TEMP
