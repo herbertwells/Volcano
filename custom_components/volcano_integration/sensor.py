@@ -2,11 +2,19 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature
-
-from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
+from .const import (
+    DOMAIN,
+    BT_DEVICE_ADDRESS,
+    UUID_BLE_FIRMWARE_VERSION,
+    UUID_SERIAL_NUMBER,
+    UUID_FIRMWARE_VERSION,
+    UUID_AUTO_SHUT_OFF,
+    UUID_AUTO_SHUT_OFF_SETTING,
+    UUID_LED_BRIGHTNESS,
+    UUID_HOURS_OF_OPERATION,
+    UUID_MINUTES_OF_OPERATION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,32 +36,41 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoAutoShutOffSensor(manager),
         VolcanoAutoShutOffSettingSensor(manager),
         VolcanoLEDBrightnessSensor(manager),
+        VolcanoHoursOfOperationSensor(manager),
+        VolcanoMinutesOfOperationSensor(manager),
     ]
     async_add_entities(entities)
 
 
 class VolcanoBaseSensor(SensorEntity):
-    """Base sensor that registers/unregisters with the VolcanoBTManager."""
+    """Base sensor for static attributes."""
 
-    def __init__(self, manager):
-        super().__init__()
+    def __init__(self, manager, name, unique_id):
         self._manager = manager
+        self._attr_name = name
+        self._attr_unique_id = unique_id
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+        }
 
-    async def async_added_to_hass(self):
-        _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
-        self._manager.register_sensor(self)
-
-    async def async_will_remove_from_hass(self):
-        _LOGGER.debug("%s: removing from hass -> unregistering sensor.", type(self).__name__)
-        self._manager.unregister_sensor(self)
+    @property
+    def available(self):
+        """Always available for static attributes."""
+        return True
 
 
-class VolcanoCurrentTempSensor(VolcanoBaseSensor):
-    """Numeric Temperature Sensor (°C)."""
+# Sensors for live attributes
+
+class VolcanoCurrentTempSensor(SensorEntity):
+    """Sensor for current temperature."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Current Temperature"
+        self._manager = manager
+        self._attr_name = "Current Temperature"
         self._attr_unique_id = "volcano_current_temperature"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -64,26 +81,23 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
-            "via_device": None,
         }
 
     @property
     def native_value(self):
-        val = self._manager.current_temperature
-        _LOGGER.debug("%s: native_value -> %s °C", type(self).__name__, val)
-        return val
+        return self._manager.current_temperature
 
     @property
     def available(self):
         return self._manager.bt_status == "CONNECTED"
 
 
-class VolcanoHeatStatusSensor(VolcanoBaseSensor):
-    """Heat Status Sensor (ON/OFF/UNKNOWN)."""
+class VolcanoHeatStatusSensor(SensorEntity):
+    """Sensor for heat status."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Heat Status"
+        self._manager = manager
+        self._attr_name = "Heat Status"
         self._attr_unique_id = "volcano_heat_status"
         self._attr_icon = "mdi:fire"
         self._attr_device_info = {
@@ -92,26 +106,23 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
-            "via_device": None,
         }
 
     @property
     def native_value(self):
-        val = self._manager.heat_state
-        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
-        return val
+        return self._manager.heat_state
 
     @property
     def available(self):
         return self._manager.bt_status == "CONNECTED"
 
 
-class VolcanoPumpStatusSensor(VolcanoBaseSensor):
-    """Pump Status Sensor (ON/OFF/UNKNOWN)."""
+class VolcanoPumpStatusSensor(SensorEntity):
+    """Sensor for pump status."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Pump Status"
+        self._manager = manager
+        self._attr_name = "Pump Status"
         self._attr_unique_id = "volcano_pump_status"
         self._attr_icon = "mdi:air-purifier"
         self._attr_device_info = {
@@ -120,26 +131,23 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
-            "via_device": None,
         }
 
     @property
     def native_value(self):
-        val = self._manager.pump_state
-        _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
-        return val
+        return self._manager.pump_state
 
     @property
     def available(self):
         return self._manager.bt_status == "CONNECTED"
 
 
-class VolcanoBTStatusSensor(VolcanoBaseSensor):
-    """Sensor that shows the current Bluetooth status/error string."""
+class VolcanoBTStatusSensor(SensorEntity):
+    """Sensor for Bluetooth status."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Bluetooth Status"
+        self._manager = manager
+        self._attr_name = "Bluetooth Status"
         self._attr_unique_id = "volcano_bt_status"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
@@ -147,38 +155,20 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
-            "via_device": None,
         }
 
     @property
     def native_value(self):
-        val = self._manager.bt_status
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
-        return val
+        return self._manager.bt_status
 
     @property
     def available(self):
         return True
 
 
-class VolcanoDiagnosticSensor(VolcanoBaseSensor):
-    """Base class for diagnostic sensors."""
+# Sensors for static attributes
 
-    def __init__(self, manager, name, unique_id):
-        super().__init__(manager)
-        self._attr_name = name
-        self._attr_unique_id = unique_id
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-        }
-
-
-class VolcanoBLEFirmwareVersionSensor(VolcanoDiagnosticSensor):
+class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
     """BLE Firmware Version Sensor."""
 
     def __init__(self, manager):
@@ -189,7 +179,7 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoDiagnosticSensor):
         return self._manager.ble_firmware_version or "UNKNOWN"
 
 
-class VolcanoSerialNumberSensor(VolcanoDiagnosticSensor):
+class VolcanoSerialNumberSensor(VolcanoBaseSensor):
     """Serial Number Sensor."""
 
     def __init__(self, manager):
@@ -200,7 +190,7 @@ class VolcanoSerialNumberSensor(VolcanoDiagnosticSensor):
         return self._manager.serial_number or "UNKNOWN"
 
 
-class VolcanoFirmwareVersionSensor(VolcanoDiagnosticSensor):
+class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
     """Volcano Firmware Version Sensor."""
 
     def __init__(self, manager):
@@ -211,29 +201,30 @@ class VolcanoFirmwareVersionSensor(VolcanoDiagnosticSensor):
         return self._manager.firmware_version or "UNKNOWN"
 
 
-class VolcanoAutoShutOffSensor(VolcanoDiagnosticSensor):
-    """Auto Shut-Off Sensor."""
+class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
+    """Auto Shutoff Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager, "Auto Shut-Off", "volcano_auto_shut_off")
+        super().__init__(manager, "Auto Shutoff", "volcano_auto_shutoff")
 
     @property
     def native_value(self):
-        return self._manager.auto_shut_off or "UNKNOWN"
+        return "Enabled" if self._manager.auto_shut_off == b"\x01" else "Disabled"
 
 
-class VolcanoAutoShutOffSettingSensor(VolcanoDiagnosticSensor):
-    """Auto Shut-Off Setting Sensor."""
+class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
+    """Auto Shutoff Setting Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager, "Auto Shut-Off Setting", "volcano_auto_shut_off_setting")
+        super().__init__(manager, "Auto Shutoff Setting", "volcano_auto_shutoff_setting")
 
     @property
     def native_value(self):
-        return self._manager.auto_shut_off_setting or "UNKNOWN"
+        seconds = int.from_bytes(self._manager.auto_shut_off_setting or b"\x00", "little")
+        return f"{seconds // 60} minutes"
 
 
-class VolcanoLEDBrightnessSensor(VolcanoDiagnosticSensor):
+class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
     """LED Brightness Sensor."""
 
     def __init__(self, manager):
@@ -241,4 +232,26 @@ class VolcanoLEDBrightnessSensor(VolcanoDiagnosticSensor):
 
     @property
     def native_value(self):
-        return self._manager.led_brightness or "UNKNOWN"
+        return int.from_bytes(self._manager.led_brightness or b"\x00", "little")
+
+
+class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
+    """Hours of Operation Sensor."""
+
+    def __init__(self, manager):
+        super().__init__(manager, "Hours of Operation", "volcano_hours_of_operation")
+
+    @property
+    def native_value(self):
+        return int.from_bytes(self._manager.hours_of_operation or b"\x00", "little")
+
+
+class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
+    """Minutes of Operation Sensor."""
+
+    def __init__(self, manager):
+        super().__init__(manager, "Minutes of Operation", "volcano_minutes_of_operation")
+
+    @property
+    def native_value(self):
+        return int.from_bytes(self._manager.minutes_of_operation or b"\x00", "little")
