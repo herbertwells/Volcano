@@ -2,11 +2,11 @@
 import logging
 import asyncio
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import aiohttp_client
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOption
 
 from .const import DOMAIN
 from bleak import BleakScanner
@@ -20,19 +20,23 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step of the config flow."""
         _LOGGER.debug("Initiating Volcano Integration config flow.")
 
         if user_input is not None:
-            selected_device = user_input.get("selected_device")
+            selected_address = user_input.get("selected_device")
+            selected_device = self._discovered_devices.get(selected_address)
+
             if selected_device:
                 return self.async_create_entry(
-                    title=selected_device["name"],
+                    title=selected_device.name or selected_address,
                     data={
-                        "bt_address": selected_device["address"],
-                        "device_name": selected_device["name"],
+                        "bt_address": selected_address,
+                        "device_name": selected_device.name or "Volcano Vaporizer",
                     },
                 )
+            else:
+                return self.async_abort(reason="device_not_found")
 
         # Discover Bluetooth devices
         devices = await self._discover_bluetooth_devices()
@@ -40,14 +44,32 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not devices:
             return self.async_abort(reason="no_devices_found")
 
-        # Create a list of devices for selection
-        device_options = [
-            (device.address, device.name or device.address) for device in devices
+        # Map devices by address for easy lookup
+        self._discovered_devices = {device.address: device for device in devices}
+
+        # Create a list of SelectOption for the selector
+        options = [
+            SelectOption(label=device.name or device.address, value=device.address)
+            for device in devices
         ]
+
+        selector = SelectSelector(
+            SelectSelectorConfig(
+                options=options,
+                mode="dropdown",
+                custom_value=False,
+            )
+        )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=self._get_device_selection_schema(devices),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "selected_device"
+                    ): selector
+                }
+            ),
             errors={},
         )
 
@@ -57,40 +79,11 @@ class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             devices = await BleakScanner.discover(timeout=timeout)
             _LOGGER.debug("Discovered %d Bluetooth devices.", len(devices))
-            # Filter devices that match Volcano Vaporizer patterns (optional)
-            # For now, return all devices
+            # Optionally, filter devices by name or other criteria here
             return devices
         except Exception as e:
             _LOGGER.error("Error during Bluetooth device discovery: %s", e)
             return []
-
-    def _get_device_selection_schema(self, devices):
-        """Generate a selection schema based on discovered devices."""
-        from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOption
-
-        options = [
-            SelectOption(label=device.name or device.address, value=device)
-            for device in devices
-        ]
-
-        selector = SelectSelector(
-            SelectSelectorConfig(
-                options=[
-                    {"label": device.name or device.address, "value": device}
-                    for device in devices
-                ],
-                mode="dropdown",
-            )
-        )
-
-        return vol.Schema(
-            {
-                vol.Required(
-                    "selected_device",
-                    default=devices[0] if devices else None,
-                ): selector
-            }
-        )
 
     async def async_step_import(self, import_data):
         """Handle configuration by YAML import."""
