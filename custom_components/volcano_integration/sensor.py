@@ -2,12 +2,14 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
 from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano sensors for a config entry."""
@@ -159,84 +161,83 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
         return True
 
 
-class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
-    """Sensor for Volcano Firmware Version."""
+class VolcanoDiagnosticSensor(VolcanoBaseSensor):
+    """Base class for diagnostic sensors."""
+
+    def __init__(self, manager, name, unique_id):
+        super().__init__(manager)
+        self._attr_name = name
+        self._attr_unique_id = unique_id
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
+            "name": "Volcano Vaporizer",
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+        }
+
+
+class VolcanoBLEFirmwareVersionSensor(VolcanoDiagnosticSensor):
+    """BLE Firmware Version Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Firmware Version"
-        self._attr_unique_id = "volcano_firmware_version"
-        self._attr_icon = "mdi:update"
-
-    @property
-    def native_value(self):
-        return self._manager.firmware_version or "UNKNOWN"
-
-
-class VolcanoSerialNumberSensor(VolcanoBaseSensor):
-    """Sensor for Volcano Serial Number."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Serial Number"
-        self._attr_unique_id = "volcano_serial_number"
-        self._attr_icon = "mdi:barcode"
-
-    @property
-    def native_value(self):
-        return self._manager.serial_number or "UNKNOWN"
-
-
-class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
-    """Sensor for Volcano BLE Firmware Version."""
-
-    def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano BLE Firmware Version"
-        self._attr_unique_id = "volcano_ble_firmware_version"
-        self._attr_icon = "mdi:chip"
+        super().__init__(manager, "BLE Firmware Version", "volcano_ble_firmware_version")
 
     @property
     def native_value(self):
         return self._manager.ble_firmware_version or "UNKNOWN"
 
 
-class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
-    """Sensor for Volcano Auto Shut Off."""
+class VolcanoSerialNumberSensor(VolcanoDiagnosticSensor):
+    """Serial Number Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Auto Shut Off"
-        self._attr_unique_id = "volcano_auto_shut_off"
-        self._attr_icon = "mdi:timer-off"
+        super().__init__(manager, "Serial Number", "volcano_serial_number")
+
+    @property
+    def native_value(self):
+        return self._manager.serial_number or "UNKNOWN"
+
+
+class VolcanoFirmwareVersionSensor(VolcanoDiagnosticSensor):
+    """Volcano Firmware Version Sensor."""
+
+    def __init__(self, manager):
+        super().__init__(manager, "Firmware Version", "volcano_firmware_version")
+
+    @property
+    def native_value(self):
+        return self._manager.firmware_version or "UNKNOWN"
+
+
+class VolcanoAutoShutOffSensor(VolcanoDiagnosticSensor):
+    """Auto Shut-Off Sensor."""
+
+    def __init__(self, manager):
+        super().__init__(manager, "Auto Shut-Off", "volcano_auto_shut_off")
 
     @property
     def native_value(self):
         return self._manager.auto_shut_off or "UNKNOWN"
 
 
-class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
-    """Sensor for Volcano Auto Shut Off Setting."""
+class VolcanoAutoShutOffSettingSensor(VolcanoDiagnosticSensor):
+    """Auto Shut-Off Setting Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano Auto Shut Off Setting"
-        self._attr_unique_id = "volcano_auto_shut_off_setting"
-        self._attr_icon = "mdi:timer-settings"
+        super().__init__(manager, "Auto Shut-Off Setting", "volcano_auto_shut_off_setting")
 
     @property
     def native_value(self):
         return self._manager.auto_shut_off_setting or "UNKNOWN"
 
 
-class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
-    """Sensor for Volcano LED Brightness."""
+class VolcanoLEDBrightnessSensor(VolcanoDiagnosticSensor):
+    """LED Brightness Sensor."""
 
     def __init__(self, manager):
-        super().__init__(manager)
-        self._attr_name = "Volcano LED Brightness"
-        self._attr_unique_id = "volcano_led_brightness"
-        self._attr_icon = "mdi:brightness-6"
+        super().__init__(manager, "LED Brightness", "volcano_led_brightness")
 
     @property
     def native_value(self):
