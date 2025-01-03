@@ -1,6 +1,6 @@
 # Volcano Integration for Home Assistant
 
-**This integration is under heavy, active development. There may be multiple updates per day, possibly resulting in errors or distruption to the integration or Home Assistant. I will change this notice once the software is available for a proper  release.**
+**This integration is under heavy, active development. There may be multiple updates per day, possibly resulting in errors or disruption to the integration or Home Assistant. I will change this notice once the software is available for a proper release.**
 
 A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation.
 
@@ -26,6 +26,29 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 
 ## Installation
 
+### Installation via HACS
+
+1. **Prerequisites**:
+   - Ensure you have [HACS](https://hacs.xyz/) installed in your Home Assistant setup.
+
+2. **Add the Repository to HACS**:
+   - In Home Assistant, navigate to **HACS > Integrations**.
+   - Click the **"+"** button to add a new repository.
+   - Enter the repository URL: `https://github.com/Chuffnugget/volcano_integration`.
+   - Select **Integration** as the category.
+
+3. **Install the Integration**:
+   - After adding, find **Volcano Integration** in the HACS Integrations list.
+   - Click **Install**.
+
+4. **Restart Home Assistant**:
+   - After installation, restart Home Assistant to activate the integration.
+
+5. **Configure the Integration**:
+   - Navigate to **Settings > Integrations**, find **Volcano Integration**, and follow the setup instructions.
+
+### Manual Installation
+
 1. **Download the Integration**:
    - Clone or download the repository from GitHub: [GitHub Repository](https://github.com/Chuffnugget/volcano_integration).
 
@@ -33,7 +56,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
    - Extract the files and place the `volcano_integration` folder in the `custom_components` directory within your Home Assistant configuration directory.
 
 3. **Install Dependencies**:
-   - Ensure the required dependencies (e.g., `bleak`) are installed. Home Assistant should handle this automatically.
+   - Ensure the required dependencies (e.g., `bleak>=0.20.0`) are installed. Home Assistant should handle this automatically.
 
 4. **Restart Home Assistant**:
    - After placing the files, restart Home Assistant.
@@ -48,19 +71,19 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 ### Entities
 
 - **Sensors**:
-  - Current Temperature: Displays the current temperature of the vaporizer.
-  - Heat Status: Shows whether the heater is ON, OFF, or in an unknown state.
-  - Pump Status: Indicates if the pump is ON, OFF, or in an unknown state.
-  - Bluetooth Status: Displays the current Bluetooth connection status.
+  - **Current Temperature**: Displays the current temperature of the vaporizer.
+  - **Heat Status**: Shows whether the heater is ON, OFF, or in an unknown state.
+  - **Pump Status**: Indicates if the pump is ON, OFF, or in an unknown state.
+  - **Bluetooth Status**: Displays the current Bluetooth connection status.
 
 - **Buttons**:
-  - Connect: Establishes a Bluetooth connection with the vaporizer.
-  - Disconnect: Ends the Bluetooth connection.
-  - Pump On/Off: Turns the pump ON or OFF.
-  - Heat On/Off: Turns the heater ON or OFF.
+  - **Connect**: Establishes a Bluetooth connection with the vaporizer.
+  - **Disconnect**: Ends the Bluetooth connection.
+  - **Pump On/Off**: Turns the pump ON or OFF.
+  - **Heat On/Off**: Turns the heater ON or OFF.
 
 - **Number Control**:
-  - Heater Temperature Setpoint: Allows setting the desired temperature between 40°C and 230°C.
+  - **Heater Temperature Setpoint**: Allows setting the desired temperature between 40°C and 230°C.
 
 ### Services
 
