@@ -151,18 +151,21 @@ class VolcanoBTManager:
             self.auto_shut_off = await self._read_gatt(UUID_AUTO_SHUT_OFF)
             self.auto_shut_off_setting = await self._read_gatt(UUID_AUTO_SHUT_OFF_SETTING)
             self.led_brightness = await self._read_gatt(UUID_LED_BRIGHTNESS)
+    
+            # Log static attributes, showing raw values in hexadecimal for certain fields
             _LOGGER.debug(
                 "Static attributes read: BLE Firmware=%s, Serial=%s, Firmware=%s, Auto Shut Off=%s, "
                 "Auto Shut Off Setting=%s, LED Brightness=%s",
                 self.ble_firmware_version,
                 self.serial_number,
                 self.firmware_version,
-                self.auto_shut_off,
-                self.auto_shut_off_setting,
-                self.led_brightness,
+                self.auto_shut_off.hex() if self.auto_shut_off else "None",
+                self.auto_shut_off_setting.hex() if self.auto_shut_off_setting else "None",
+                self.led_brightness.hex() if self.led_brightness else "None",
             )
         except BleakError as e:
             _LOGGER.warning("Error reading static attributes: %s", e)
+
 
     async def _read_gatt(self, uuid):
         """Helper to read GATT characteristic."""
