@@ -49,7 +49,7 @@ class VolcanoBaseSensor(SensorEntity):
 
 
 class VolcanoCurrentTempSensor(VolcanoBaseSensor):
-    """Numeric Temperature Sensor (°C)."""
+    """Numeric Temperature Sensor (\u00b0C)."""
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -152,7 +152,7 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
 class StaticValueSensor(VolcanoBaseSensor):
     """Base class for static value sensors."""
 
-    def __init__(self, manager, name, unique_id, attr_name):
+    def __init__(self, manager, name, unique_id):
         super().__init__(manager)
         self._attr_name = name
         self._attr_unique_id = unique_id
@@ -164,7 +164,6 @@ class StaticValueSensor(VolcanoBaseSensor):
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
         }
-        self._attr_name = attr_name
 
     @property
     def available(self):
@@ -173,7 +172,7 @@ class StaticValueSensor(VolcanoBaseSensor):
 
 class VolcanoBLEFirmwareVersionSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "BLE Firmware Version", "volcano_ble_firmware_version", "BLE Firmware Version")
+        super().__init__(manager, "BLE Firmware Version", "volcano_ble_firmware_version")
 
     @property
     def native_value(self):
@@ -182,7 +181,7 @@ class VolcanoBLEFirmwareVersionSensor(StaticValueSensor):
 
 class VolcanoSerialNumberSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Serial Number", "volcano_serial_number", "Serial Number")
+        super().__init__(manager, "Serial Number", "volcano_serial_number")
 
     @property
     def native_value(self):
@@ -191,7 +190,7 @@ class VolcanoSerialNumberSensor(StaticValueSensor):
 
 class VolcanoFirmwareVersionSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Firmware Version", "volcano_firmware_version", "Firmware Version")
+        super().__init__(manager, "Firmware Version", "volcano_firmware_version")
 
     @property
     def native_value(self):
@@ -200,7 +199,7 @@ class VolcanoFirmwareVersionSensor(StaticValueSensor):
 
 class VolcanoAutoShutOffSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Auto Shut Off", "volcano_auto_shut_off", "Auto Shut Off")
+        super().__init__(manager, "Auto Shut Off", "volcano_auto_shut_off")
 
     @property
     def native_value(self):
@@ -209,7 +208,7 @@ class VolcanoAutoShutOffSensor(StaticValueSensor):
 
 class VolcanoAutoShutOffSettingSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Auto Shut Off Setting", "volcano_auto_shut_off_setting", "Auto Shut Off Setting")
+        super().__init__(manager, "Auto Shut Off Setting", "volcano_auto_shut_off_setting")
 
     @property
     def native_value(self):
@@ -218,7 +217,7 @@ class VolcanoAutoShutOffSettingSensor(StaticValueSensor):
 
 class VolcanoLEDBrightnessSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "LED Brightness", "volcano_led_brightness", "LED Brightness")
+        super().__init__(manager, "LED Brightness", "volcano_led_brightness")
 
     @property
     def native_value(self):
@@ -227,7 +226,7 @@ class VolcanoLEDBrightnessSensor(StaticValueSensor):
 
 class VolcanoHoursOfOperationSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Hours of Operation", "volcano_hours_of_operation", "Hours of Operation")
+        super().__init__(manager, "Hours of Operation", "volcano_hours_of_operation")
 
     @property
     def native_value(self):
@@ -236,7 +235,7 @@ class VolcanoHoursOfOperationSensor(StaticValueSensor):
 
 class VolcanoMinutesOfOperationSensor(StaticValueSensor):
     def __init__(self, manager):
-        super().__init__(manager, "Minutes of Operation", "volcano_minutes_of_operation", "Minutes of Operation")
+        super().__init__(manager, "Minutes of Operation", "volcano_minutes_of_operation")
 
     @property
     def native_value(self):
