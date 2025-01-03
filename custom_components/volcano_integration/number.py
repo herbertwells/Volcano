@@ -5,7 +5,6 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,22 +20,23 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [VolcanoHeaterTempNumber(manager)]
+    entities = [VolcanoHeaterTempNumber(manager, entry)]
     async_add_entities(entities)
 
 
 class VolcanoHeaterTempNumber(NumberEntity):
     """Number entity for setting the Volcano's heater temperature (40–230 °C)."""
 
-    def __init__(self, manager):
+    def __init__(self, manager, config_entry):
         super().__init__()
         self._manager = manager
+        self._config_entry = config_entry
         self._attr_name = "Volcano Heater Temperature Setpoint"
-        self._attr_unique_id = "volcano_heater_temperature_setpoint"
+        self._attr_unique_id = f"volcano_heater_temperature_setpoint_{self._manager.bt_address}"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
