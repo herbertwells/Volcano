@@ -5,9 +5,9 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTemperature
 
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano sensors for a config entry."""
@@ -16,10 +16,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
     manager = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
-        VolcanoCurrentTempSensor(manager),
-        VolcanoHeatStatusSensor(manager),
-        VolcanoPumpStatusSensor(manager),
-        VolcanoBTStatusSensor(manager),
+        VolcanoCurrentTempSensor(manager, entry),
+        VolcanoHeatStatusSensor(manager, entry),
+        VolcanoPumpStatusSensor(manager, entry),
+        VolcanoBTStatusSensor(manager, entry),
     ]
     async_add_entities(entities)
 
@@ -27,9 +27,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class VolcanoBaseSensor(SensorEntity):
     """Base sensor that registers/unregisters with the VolcanoBTManager."""
 
-    def __init__(self, manager):
-        super().__init__()  # Removed passing manager
+    def __init__(self, manager, config_entry):
+        super().__init__()
         self._manager = manager
+        self._config_entry = config_entry
 
     async def async_added_to_hass(self):
         _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
@@ -43,16 +44,16 @@ class VolcanoBaseSensor(SensorEntity):
 class VolcanoCurrentTempSensor(VolcanoBaseSensor):
     """Numeric Temperature Sensor (°C)."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Current Temperature"
-        self._attr_unique_id = "volcano_current_temperature"
+        self._attr_unique_id = f"volcano_current_temperature_{self._manager.bt_address}"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
@@ -73,14 +74,14 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 class VolcanoHeatStatusSensor(VolcanoBaseSensor):
     """Heat Status Sensor (ON/OFF/UNKNOWN)."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Heat Status"
-        self._attr_unique_id = "volcano_heat_status"
+        self._attr_unique_id = f"volcano_heat_status_{self._manager.bt_address}"
         self._attr_icon = "mdi:fire"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
@@ -101,14 +102,14 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
 class VolcanoPumpStatusSensor(VolcanoBaseSensor):
     """Pump Status Sensor (ON/OFF/UNKNOWN)."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Pump Status"
-        self._attr_unique_id = "volcano_pump_status"
+        self._attr_unique_id = f"volcano_pump_status_{self._manager.bt_address}"
         self._attr_icon = "mdi:air-purifier"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
@@ -129,14 +130,13 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
     """Sensor that shows the current Bluetooth status/error string."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Bluetooth Status"
-        self._attr_unique_id = "volcano_bt_status"
-        self._attr_unique_id = "volcano_bt_status"
+        self._attr_unique_id = f"volcano_bt_status_{self._manager.bt_address}"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
