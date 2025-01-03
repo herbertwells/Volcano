@@ -16,6 +16,8 @@ from .const import (
     UUID_AUTO_SHUT_OFF,
     UUID_AUTO_SHUT_OFF_SETTING,
     UUID_LED_BRIGHTNESS,
+    UUID_HOURS_OF_OPERATION,
+    UUID_MINUTES_OF_OPERATION,
     BT_STATUS_DISCONNECTED,
     BT_STATUS_CONNECTING,
     BT_STATUS_CONNECTED,
@@ -52,15 +54,15 @@ class VolcanoBTManager:
         self._sensors = []
         self.slot_bluetooth_error = False
 
-        # Add attributes for new GATT characteristics
+        # Add attributes for GATT characteristics
         self.ble_firmware_version = None
         self.serial_number = None
         self.firmware_version = None
         self.auto_shut_off = None
         self.auto_shut_off_setting = None
         self.led_brightness = None
-
-        _LOGGER.debug("Initialized VolcanoBTManager instance.")
+        self.hours_of_operation = 0  # Initialize to 0 or None
+        self.minutes_of_operation = 0  # Initialize to 0 or None
 
     @property
     def bt_status(self):
@@ -83,15 +85,11 @@ class VolcanoBTManager:
 
     async def start(self):
         if not self._run_task or self._run_task.done():
-            _LOGGER.debug("Starting VolcanoBTManager tasks.")
             self._stop_event.clear()
             self._run_task = asyncio.create_task(self._run())
             self._temp_poll_task = asyncio.create_task(self._poll_temperature())
-        else:
-            _LOGGER.debug("VolcanoBTManager tasks already running.")
 
     async def stop(self):
-        _LOGGER.debug("Stopping VolcanoBTManager tasks.")
         if self._run_task and not self._run_task.done():
             self._stop_event.set()
             await self._run_task
@@ -100,7 +98,7 @@ class VolcanoBTManager:
             try:
                 await self._temp_poll_task
             except asyncio.CancelledError:
-                _LOGGER.debug("Temperature polling task canceled.")
+                pass
         self.bt_status = BT_STATUS_DISCONNECTED
 
     async def async_user_connect(self):
@@ -143,8 +141,8 @@ class VolcanoBTManager:
                 await self._subscribe_pump_notifications()
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
-        except Exception as e:  # Use broad exception for debugging
-            _LOGGER.error("Exception during connection: %s", e)
+        except BleakError as e:
+            _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = BT_STATUS_ERROR
             await asyncio.sleep(RECONNECT_INTERVAL)
 
@@ -158,15 +156,21 @@ class VolcanoBTManager:
             self.auto_shut_off_setting = await self._read_gatt(UUID_AUTO_SHUT_OFF_SETTING)
             self.led_brightness = await self._read_gatt(UUID_LED_BRIGHTNESS)
 
+            # Read operational times
+            self.hours_of_operation = int(await self._read_gatt(UUID_HOURS_OF_OPERATION) or 0)
+            self.minutes_of_operation = int(await self._read_gatt(UUID_MINUTES_OF_OPERATION) or 0)
+
             _LOGGER.debug(
                 "Static attributes read: BLE Firmware=%s, Serial=%s, Firmware=%s, Auto Shut Off=%s, "
-                "Auto Shut Off Setting=%s, LED Brightness=%s",
+                "Auto Shut Off Setting=%s, LED Brightness=%s, Hours of Operation=%s, Minutes of Operation=%s",
                 self.ble_firmware_version,
                 self.serial_number,
                 self.firmware_version,
-                self.auto_shut_off.hex() if self.auto_shut_off else "None",
-                self.auto_shut_off_setting.hex() if self.auto_shut_off_setting else "None",
-                self.led_brightness.hex() if self.led_brightness else "None",
+                self.auto_shut_off,
+                self.auto_shut_off_setting,
+                self.led_brightness,
+                self.hours_of_operation,
+                self.minutes_of_operation,
             )
         except BleakError as e:
             _LOGGER.warning("Error reading static attributes: %s", e)
