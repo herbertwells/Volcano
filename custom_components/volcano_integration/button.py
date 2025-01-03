@@ -2,7 +2,7 @@
 import logging
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
-from .bluetooth_coordinator import BT_DEVICE_ADDRESS
+
 from .const import (
     UUID_PUMP_ON,
     UUID_PUMP_OFF,
@@ -20,12 +20,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     manager = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
-        VolcanoConnectButton(manager),
-        VolcanoDisconnectButton(manager),
-        VolcanoPumpOnButton(manager),
-        VolcanoPumpOffButton(manager),
-        VolcanoHeatOnButton(manager),
-        VolcanoHeatOffButton(manager),
+        VolcanoConnectButton(manager, entry),
+        VolcanoDisconnectButton(manager, entry),
+        VolcanoPumpOnButton(manager, entry),
+        VolcanoPumpOffButton(manager, entry),
+        VolcanoHeatOnButton(manager, entry),
+        VolcanoHeatOffButton(manager, entry),
     ]
     async_add_entities(entities)
 
@@ -33,12 +33,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class VolcanoBaseButton(ButtonEntity):
     """Base button for the Volcano integration that references the BT manager."""
 
-    def __init__(self, manager):
+    def __init__(self, manager, config_entry):
         super().__init__()
         self._manager = manager
+        self._config_entry = config_entry
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, BT_DEVICE_ADDRESS)},
-            "name": "Volcano Vaporizer",
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
             "sw_version": "1.0.0",
@@ -64,10 +65,10 @@ class VolcanoBaseButton(ButtonEntity):
 class VolcanoConnectButton(VolcanoBaseButton):
     """A button to force the Volcano integration to connect BLE."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Connect"
-        self._attr_unique_id = "volcano_connect_button"
+        self._attr_unique_id = f"volcano_connect_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:bluetooth-connect"
 
     async def async_press(self):
@@ -79,10 +80,10 @@ class VolcanoConnectButton(VolcanoBaseButton):
 class VolcanoDisconnectButton(VolcanoBaseButton):
     """A button to force the Volcano integration to disconnect BLE."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Disconnect"
-        self._attr_unique_id = "volcano_disconnect_button"
+        self._attr_unique_id = f"volcano_disconnect_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:bluetooth-off"
 
     async def async_press(self):
@@ -94,10 +95,10 @@ class VolcanoDisconnectButton(VolcanoBaseButton):
 class VolcanoPumpOnButton(VolcanoBaseButton):
     """A button to turn Pump ON by writing to a GATT characteristic."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Pump On"
-        self._attr_unique_id = "volcano_pump_on_button"
+        self._attr_unique_id = f"volcano_pump_on_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:air-purifier"
 
     @property
@@ -114,10 +115,10 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
 class VolcanoPumpOffButton(VolcanoBaseButton):
     """A button to turn Pump OFF by writing to a GATT characteristic."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Pump Off"
-        self._attr_unique_id = "volcano_pump_off_button"
+        self._attr_unique_id = f"volcano_pump_off_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:air-purifier-off"
 
     @property
@@ -134,10 +135,10 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
 class VolcanoHeatOnButton(VolcanoBaseButton):
     """A button to turn Heat ON by writing to a GATT characteristic."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Heat On"
-        self._attr_unique_id = "volcano_heat_on_button"
+        self._attr_unique_id = f"volcano_heat_on_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:fire"
 
     @property
@@ -154,10 +155,10 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
 class VolcanoHeatOffButton(VolcanoBaseButton):
     """A button to turn Heat OFF by writing to a GATT characteristic."""
 
-    def __init__(self, manager):
-        super().__init__(manager)
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
         self._attr_name = "Volcano Heat Off"
-        self._attr_unique_id = "volcano_heat_off_button"
+        self._attr_unique_id = f"volcano_heat_off_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:fire-off"
 
     @property
