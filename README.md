@@ -1,9 +1,5 @@
 # Volcano Integration for Home Assistant
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Chuffnugget/volcano_integration/blob/master/LICENSE)
-[![HACS Available](https://img.shields.io/badge/HACS-Default-orange.svg)](https://www.hacs.xyz/)
-
-
 **[HACS Available](https://hacs.xyz/)**
 
 **This integration is under heavy, active development. There may be multiple updates per day, possibly resulting in errors or disruption to the integration or Home Assistant. I will change this notice once the software is available for a proper release.**
