@@ -3,6 +3,7 @@ import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTemperature
+from homeassistant.helpers.entity import EntityCategory  # Imported EntityCategory
 
 from . import DOMAIN
 
@@ -20,6 +21,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoHeatStatusSensor(manager, entry),
         VolcanoPumpStatusSensor(manager, entry),
         VolcanoBTStatusSensor(manager, entry),
+        VolcanoBLEFirmwareVersionSensor(manager, entry),  # New Sensor
+        VolcanoSerialNumberSensor(manager, entry),         # New Sensor
     ]
     async_add_entities(entities)
 
@@ -153,3 +156,65 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
     def available(self):
         # Always show the BT Status sensor
         return True
+
+
+# New Sensor: BLE Firmware Version
+class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
+    """Sensor to display the BLE Firmware Version."""
+
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
+        self._attr_name = "Volcano BLE Firmware Version"
+        self._attr_unique_id = f"volcano_ble_firmware_version_{self._manager.bt_address}"
+        self._attr_icon = "mdi:information"
+        self._attr_device_class = None  # Generic sensor
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.ble_firmware_version
+        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        return (self._manager.bt_status == "CONNECTED" and self._manager.ble_firmware_version is not None)
+
+
+# New Sensor: Serial Number
+class VolcanoSerialNumberSensor(VolcanoBaseSensor):
+    """Sensor to display the Serial Number."""
+
+    def __init__(self, manager, config_entry):
+        super().__init__(manager, config_entry)
+        self._attr_name = "Volcano Serial Number"
+        self._attr_unique_id = f"volcano_serial_number_{self._manager.bt_address}"
+        self._attr_icon = "mdi:card-account-details"
+        self._attr_device_class = None  # Generic sensor
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+    @property
+    def native_value(self):
+        val = self._manager.serial_number
+        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        return val
+
+    @property
+    def available(self):
+        return (self._manager.bt_status == "CONNECTED" and self._manager.serial_number is not None)

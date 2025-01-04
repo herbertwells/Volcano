@@ -14,6 +14,8 @@ from .const import (
     BT_STATUS_CONNECTING,
     BT_STATUS_CONNECTED,
     BT_STATUS_ERROR,
+    UUID_BLE_FIRMWARE_VERSION,
+    UUID_SERIAL_NUMBER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ VALID_PATTERNS = {
     (0x23, 0x06): ("ON", "ON (0x06)"),
     (0x23, 0x26): ("ON", "ON (0x26)"),
     (0x23, 0x02): ("ON", "ON (0x02)"),
-    (0x23, 0x36): ("ON", "ON (0x36)")
+    (0x23, 0x36): ("ON", "ON (0x36)"),
 }
 
 
@@ -47,6 +49,8 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
+        self.ble_firmware_version = None  # New Attribute
+        self.serial_number = None         # New Attribute
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
@@ -135,6 +139,9 @@ class VolcanoBTManager:
             if self._connected:
                 _LOGGER.info("Bluetooth successfully connected to %s", self.bt_address)
                 self.bt_status = BT_STATUS_CONNECTED
+                # Read BLE Firmware Version and Serial Number before starting other operations
+                await self._read_ble_firmware_version()
+                await self._read_serial_number()
                 await self._subscribe_pump_notifications()
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
@@ -146,6 +153,36 @@ class VolcanoBTManager:
             self.bt_status = BT_STATUS_ERROR
             await asyncio.sleep(RECONNECT_INTERVAL)
 
+    async def _read_ble_firmware_version(self):
+        """Read the BLE Firmware Version characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read BLE Firmware Version - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading BLE Firmware Version from UUID: %s", UUID_BLE_FIRMWARE_VERSION)
+            data = await self._client.read_gatt_char(UUID_BLE_FIRMWARE_VERSION)
+            self.ble_firmware_version = data.decode('utf-8').strip()
+            _LOGGER.info("BLE Firmware Version: %s", self.ble_firmware_version)
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error reading BLE Firmware Version: %s", e)
+            self.ble_firmware_version = None
+
+    async def _read_serial_number(self):
+        """Read the Serial Number characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Serial Number - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Serial Number from UUID: %s", UUID_SERIAL_NUMBER)
+            data = await self._client.read_gatt_char(UUID_SERIAL_NUMBER)
+            self.serial_number = data.decode('utf-8').strip()
+            _LOGGER.info("Serial Number: %s", self.serial_number)
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error reading Serial Number: %s", e)
+            self.serial_number = None
+
     async def _subscribe_pump_notifications(self):
         """Subscribe to pump notifications."""
         if not self._connected:
@@ -153,6 +190,7 @@ class VolcanoBTManager:
 
         def notification_handler(sender, data):
             """Handle incoming pump notifications."""
+            _LOGGER.debug("Received pump notification from %s: %s", sender, data)
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
                 if (b1, b2) in VALID_PATTERNS:
@@ -160,10 +198,13 @@ class VolcanoBTManager:
                 else:
                     self.heat_state = f"0x{b1:02X}"
                     self.pump_state = f"0x{b2:02X}"
+                _LOGGER.debug("Parsed Heat State: %s, Pump State: %s", self.heat_state, self.pump_state)
             self._notify_sensors()
 
         try:
+            _LOGGER.debug("Subscribing to pump notifications on UUID: %s", UUID_PUMP_NOTIFICATIONS)
             await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
+            _LOGGER.info("Subscribed to pump notifications.")
         except BleakError as e:
             _LOGGER.warning("Error subscribing to notifications: %s", e)
 
@@ -179,12 +220,15 @@ class VolcanoBTManager:
         if not self._connected or not self._client:
             return
         try:
+            _LOGGER.debug("Reading temperature from UUID: %s", UUID_TEMP)
             data = await self._client.read_gatt_char(UUID_TEMP)
             if len(data) >= 2:
                 raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
                 self.current_temperature = raw_16 / 10.0
+                _LOGGER.debug("Read temperature: %s °C", self.current_temperature)
             else:
                 self.current_temperature = None
+                _LOGGER.warning("Received incomplete temperature data: %s", data)
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading temperature: %s -> disconnect & retry...", e)
@@ -193,6 +237,7 @@ class VolcanoBTManager:
 
     def _notify_sensors(self):
         """Notify all registered sensors that new data is available."""
+        _LOGGER.debug("Notifying %d sensors of new data.", len(self._sensors))
         for sensor_entity in self._sensors:
             sensor_entity.schedule_update_ha_state(True)
 
@@ -200,7 +245,9 @@ class VolcanoBTManager:
         """Disconnect from the BLE device."""
         if self._client:
             try:
+                _LOGGER.debug("Disconnecting from Bluetooth device %s...", self.bt_address)
                 await self._client.disconnect()
+                _LOGGER.info("Disconnected from Bluetooth device %s.", self.bt_address)
             except BleakError as e:
                 _LOGGER.warning("Bluetooth disconnection warning: %s", e)
         self._client = None
@@ -213,7 +260,9 @@ class VolcanoBTManager:
             _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
             return
         try:
+            _LOGGER.debug("Writing to UUID: %s with payload: %s", write_uuid, payload)
             await self._client.write_gatt_char(write_uuid, payload)
+            _LOGGER.info("Successfully wrote to UUID: %s", write_uuid)
         except BleakError as e:
             _LOGGER.error("Error writing to %s: %s", write_uuid, e)
 
@@ -225,6 +274,8 @@ class VolcanoBTManager:
         safe_temp = max(40.0, min(temp_c, 230.0))
         payload = int(safe_temp * 10).to_bytes(2, byteorder="little")
         try:
+            _LOGGER.debug("Setting heater temperature to %s °C with payload: %s", safe_temp, payload)
             await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
+            _LOGGER.info("Heater temperature set to %s °C.", safe_temp)
         except BleakError as e:
             _LOGGER.error("Error writing heater temperature: %s", e)
