@@ -16,6 +16,12 @@ from .const import (
     BT_STATUS_ERROR,
     UUID_BLE_FIRMWARE_VERSION,
     UUID_SERIAL_NUMBER,
+    UUID_FIRMWARE_VERSION,
+    UUID_AUTO_SHUT_OFF,
+    UUID_AUTO_SHUT_OFF_SETTING,
+    UUID_LED_BRIGHTNESS,
+    UUID_HOURS_OF_OPERATION,
+    UUID_MINUTES_OF_OPERATION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,8 +55,14 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self.ble_firmware_version = None  # New Attribute
-        self.serial_number = None         # New Attribute
+        self.ble_firmware_version = None         # New Attribute
+        self.serial_number = None                # New Attribute
+        self.firmware_version = None             # New Attribute
+        self.auto_shut_off = None                 # New Attribute
+        self.auto_shut_off_setting = None         # New Attribute
+        self.led_brightness = None                # New Attribute
+        self.hours_of_operation = None            # New Attribute
+        self.minutes_of_operation = None          # New Attribute
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
@@ -139,9 +151,15 @@ class VolcanoBTManager:
             if self._connected:
                 _LOGGER.info("Bluetooth successfully connected to %s", self.bt_address)
                 self.bt_status = BT_STATUS_CONNECTED
-                # Read BLE Firmware Version and Serial Number before starting other operations
+                # Read all required characteristics before starting other operations
                 await self._read_ble_firmware_version()
                 await self._read_serial_number()
+                await self._read_firmware_version()
+                await self._read_auto_shut_off()
+                await self._read_auto_shut_off_setting()
+                await self._read_led_brightness()
+                await self._read_hours_of_operation()
+                await self._read_minutes_of_operation()
                 await self._subscribe_pump_notifications()
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
@@ -182,6 +200,119 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error reading Serial Number: %s", e)
             self.serial_number = None
+
+    async def _read_firmware_version(self):
+        """Read the Volcano Firmware Version characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Firmware Version - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Firmware Version from UUID: %s", UUID_FIRMWARE_VERSION)
+            data = await self._client.read_gatt_char(UUID_FIRMWARE_VERSION)
+            self.firmware_version = data.decode('utf-8').strip()
+            _LOGGER.info("Firmware Version: %s", self.firmware_version)
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error reading Firmware Version: %s", e)
+            self.firmware_version = None
+
+    async def _read_auto_shut_off(self):
+        """Read the Auto Shutoff characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Auto Shutoff - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Auto Shutoff from UUID: %s", UUID_AUTO_SHUT_OFF)
+            data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF)
+            # Assuming the data is a single byte representing ON/OFF
+            if data:
+                self.auto_shut_off = "ON" if data[0] == 1 else "OFF"
+                _LOGGER.info("Auto Shutoff: %s", self.auto_shut_off)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received empty data for Auto Shutoff.")
+                self.auto_shut_off = None
+        except BleakError as e:
+            _LOGGER.error("Error reading Auto Shutoff: %s", e)
+            self.auto_shut_off = None
+
+    async def _read_auto_shut_off_setting(self):
+        """Read the Auto Shutoff Setting characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Auto Shutoff Setting - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Auto Shutoff Setting from UUID: %s", UUID_AUTO_SHUT_OFF_SETTING)
+            data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF_SETTING)
+            # Assuming the data represents the shutoff duration in minutes as an integer
+            if len(data) >= 2:
+                self.auto_shut_off_setting = int.from_bytes(data[:2], byteorder="little")
+                _LOGGER.info("Auto Shutoff Setting: %s minutes", self.auto_shut_off_setting)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received incomplete data for Auto Shutoff Setting.")
+                self.auto_shut_off_setting = None
+        except BleakError as e:
+            _LOGGER.error("Error reading Auto Shutoff Setting: %s", e)
+            self.auto_shut_off_setting = None
+
+    async def _read_led_brightness(self):
+        """Read the LED Brightness characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read LED Brightness - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading LED Brightness from UUID: %s", UUID_LED_BRIGHTNESS)
+            data = await self._client.read_gatt_char(UUID_LED_BRIGHTNESS)
+            # Assuming the data is a single byte representing brightness level (0-100)
+            if data:
+                self.led_brightness = data[0]
+                _LOGGER.info("LED Brightness: %s%%", self.led_brightness)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received empty data for LED Brightness.")
+                self.led_brightness = None
+        except BleakError as e:
+            _LOGGER.error("Error reading LED Brightness: %s", e)
+            self.led_brightness = None
+
+    async def _read_hours_of_operation(self):
+        """Read the Hours of Operation characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Hours of Operation - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Hours of Operation from UUID: %s", UUID_HOURS_OF_OPERATION)
+            data = await self._client.read_gatt_char(UUID_HOURS_OF_OPERATION)
+            if len(data) >= 2:
+                self.hours_of_operation = int.from_bytes(data[:2], byteorder="little")
+                _LOGGER.info("Hours of Operation: %s hours", self.hours_of_operation)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received incomplete data for Hours of Operation.")
+                self.hours_of_operation = None
+        except BleakError as e:
+            _LOGGER.error("Error reading Hours of Operation: %s", e)
+            self.hours_of_operation = None
+
+    async def _read_minutes_of_operation(self):
+        """Read the Minutes of Operation characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Minutes of Operation - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Minutes of Operation from UUID: %s", UUID_MINUTES_OF_OPERATION)
+            data = await self._client.read_gatt_char(UUID_MINUTES_OF_OPERATION)
+            if len(data) >= 2:
+                self.minutes_of_operation = int.from_bytes(data[:2], byteorder="little")
+                _LOGGER.info("Minutes of Operation: %s minutes", self.minutes_of_operation)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received incomplete data for Minutes of Operation.")
+                self.minutes_of_operation = None
+        except BleakError as e:
+            _LOGGER.error("Error reading Minutes of Operation: %s", e)
+            self.minutes_of_operation = None
 
     async def _subscribe_pump_notifications(self):
         """Subscribe to pump notifications."""
