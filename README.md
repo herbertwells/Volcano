@@ -45,7 +45,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
    - After installation, restart Home Assistant to activate the integration.
 
 5. **Configure the Integration**:
-   - Navigate to **Settings > Devices & Services**, find **Volcano Integration**, and follow the setup instructions.
+   - Navigate to **Settings > Devices & Services**, find **Volcano Integration**, and follow the setup instructions. The configuration menu will scan for Bluetooth devices, dsiplaying a list. Simply select your Volcano Vaporizer and the setup will complete.
 
 ### Manual Installation
 
