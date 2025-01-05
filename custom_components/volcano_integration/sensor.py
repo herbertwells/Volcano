@@ -3,7 +3,7 @@ import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTemperature
-from homeassistant.helpers.entity import EntityCategory  # Imported EntityCategory
+from homeassistant.helpers.entity import EntityCategory
 
 from . import DOMAIN
 
@@ -42,10 +42,12 @@ class VolcanoBaseSensor(SensorEntity):
         self._config_entry = config_entry
 
     async def async_added_to_hass(self):
+        """Register the sensor with the manager when added to Home Assistant."""
         _LOGGER.debug("%s: added to hass -> registering sensor.", type(self).__name__)
         self._manager.register_sensor(self)
 
     async def async_will_remove_from_hass(self):
+        """Unregister the sensor from the manager when removed from Home Assistant."""
         _LOGGER.debug("%s: removing from hass -> unregistering sensor.", type(self).__name__)
         self._manager.unregister_sensor(self)
 
@@ -65,19 +67,21 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the current temperature in °C."""
         val = self._manager.current_temperature
         _LOGGER.debug("%s: native_value -> %s °C", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the sensor is available."""
+        return self._manager.bt_status == "CONNECTED"
 
 
 class VolcanoHeatStatusSensor(VolcanoBaseSensor):
@@ -93,19 +97,21 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the heat status."""
         val = self._manager.heat_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the sensor is available."""
+        return self._manager.bt_status == "CONNECTED"
 
 
 class VolcanoPumpStatusSensor(VolcanoBaseSensor):
@@ -121,19 +127,21 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the pump status."""
         val = self._manager.pump_state
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the sensor is available."""
+        return self._manager.bt_status == "CONNECTED"
 
 
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
@@ -148,19 +156,20 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the current Bluetooth status."""
         val = self._manager.bt_status
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        # Always show the BT Status sensor
+        """Always available."""
         return True
 
 
@@ -180,19 +189,24 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the BLE Firmware Version."""
         val = self._manager.ble_firmware_version
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.ble_firmware_version is not None)
+        """Return True if BLE Firmware Version is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.ble_firmware_version is not None
+        )
 
 
 # New Sensor: Serial Number
@@ -211,19 +225,24 @@ class VolcanoSerialNumberSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Serial Number."""
         val = self._manager.serial_number
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.serial_number is not None)
+        """Return True if Serial Number is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.serial_number is not None
+        )
 
 
 # New Sensor: Firmware Version
@@ -242,19 +261,24 @@ class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Firmware Version."""
         val = self._manager.firmware_version
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.firmware_version is not None)
+        """Return True if Firmware Version is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.firmware_version is not None
+        )
 
 
 # New Sensor: Auto Shutoff
@@ -273,19 +297,24 @@ class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Auto Shutoff status."""
         val = self._manager.auto_shut_off
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.auto_shut_off is not None)
+        """Return True if Auto Shutoff status is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.auto_shut_off is not None
+        )
 
 
 # New Sensor: Auto Shutoff Setting
@@ -304,19 +333,28 @@ class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Auto Shutoff Setting in minutes."""
         val = self._manager.auto_shut_off_setting
-        _LOGGER.debug("%s: native_value -> '%s' minutes", type(self).__name__, val)
-        return val
+        if val is not None:
+            minutes = val // 60
+        else:
+            minutes = 0
+        _LOGGER.debug("%s: native_value -> '%s' minutes", type(self).__name__, minutes)
+        return minutes
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.auto_shut_off_setting is not None)
+        """Return True if Auto Shutoff Setting is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.auto_shut_off_setting is not None
+        )
 
 
 # New Sensor: LED Brightness
@@ -335,19 +373,24 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the LED Brightness percentage."""
         val = self._manager.led_brightness
         _LOGGER.debug("%s: native_value -> '%s%%'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.led_brightness is not None)
+        """Return True if LED Brightness is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.led_brightness is not None
+        )
 
 
 # New Sensor: Hours of Operation
@@ -366,19 +409,24 @@ class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Hours of Operation."""
         val = self._manager.hours_of_operation
         _LOGGER.debug("%s: native_value -> '%s hours'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.hours_of_operation is not None)
+        """Return True if Hours of Operation is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.hours_of_operation is not None
+        )
 
 
 # New Sensor: Minutes of Operation
@@ -397,16 +445,21 @@ class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the Minutes of Operation."""
         val = self._manager.minutes_of_operation
         _LOGGER.debug("%s: native_value -> '%s minutes'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.minutes_of_operation is not None)
+        """Return True if Minutes of Operation is available."""
+        return (
+            self._manager.bt_status == "CONNECTED"
+            and self._manager.minutes_of_operation is not None
+        )
