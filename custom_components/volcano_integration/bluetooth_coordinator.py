@@ -61,6 +61,7 @@ class VolcanoBTManager:
         self.auto_shut_off = None                 # New Attribute
         self.auto_shut_off_setting = None         # New Attribute
         self.led_brightness = None                # New Attribute
+        self.heater_temperature_setpoint = None    # New Attribute for Heater Temperature Setpoint
         self.hours_of_operation = None            # New Attribute
         self.minutes_of_operation = None          # New Attribute
         self._bt_status = BT_STATUS_DISCONNECTED
@@ -158,6 +159,7 @@ class VolcanoBTManager:
                 await self._read_auto_shut_off()
                 await self._read_auto_shut_off_setting()
                 await self._read_led_brightness()
+                await self._read_heater_temperature_setpoint()  # Read Heater Temperature Setpoint
                 await self._read_hours_of_operation()
                 await self._read_minutes_of_operation()
                 await self._subscribe_pump_notifications()
@@ -276,6 +278,26 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error reading LED Brightness: %s", e)
             self.led_brightness = None
+
+    async def _read_heater_temperature_setpoint(self):
+        """Read the Heater Temperature Setpoint characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read Heater Temperature Setpoint - not connected.")
+            return
+        try:
+            _LOGGER.debug("Reading Heater Temperature Setpoint from UUID: %s", UUID_HEATER_SETPOINT)
+            data = await self._client.read_gatt_char(UUID_HEATER_SETPOINT)
+            # Assuming the data is a 2-byte little-endian integer representing temperature in °C
+            if len(data) >= 2:
+                self.heater_temperature_setpoint = int.from_bytes(data[:2], byteorder='little')
+                _LOGGER.info("Heater Temperature Setpoint: %s°C", self.heater_temperature_setpoint)
+                self._notify_sensors()
+            else:
+                _LOGGER.warning("Received incomplete data for Heater Temperature Setpoint.")
+                self.heater_temperature_setpoint = None
+        except BleakError as e:
+            _LOGGER.error("Error reading Heater Temperature Setpoint: %s", e)
+            self.heater_temperature_setpoint = None
 
     async def _read_hours_of_operation(self):
         """Read the Hours of Operation characteristic."""
@@ -398,22 +420,18 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error writing to %s: %s", write_uuid, e)
 
-    async def set_auto_shutoff(self, enabled: bool):
-        """Enable or disable Auto Shutoff."""
-        auto_shutoff_value = bytearray([0x01]) if enabled else bytearray([0x00])
-        _LOGGER.debug("Setting Auto Shutoff to %s", "Enabled" if enabled else "Disabled")
-        await self.write_gatt_command(UUID_AUTO_SHUT_OFF, auto_shutoff_value)
-
-    async def set_auto_shutoff_setting(self, minutes: int):
-        """Set Auto Shutoff duration in minutes."""
-        auto_shutoff_seconds = minutes * 60
-        auto_shutoff_setting_value = auto_shutoff_seconds.to_bytes(2, byteorder='little')
-        _LOGGER.debug("Setting Auto Shutoff Setting to %s minutes (%s seconds)", minutes, auto_shutoff_seconds)
-        await self.write_gatt_command(UUID_AUTO_SHUT_OFF_SETTING, auto_shutoff_setting_value)
-
-    async def set_led_brightness(self, brightness: int):
-        """Set LED Brightness level (0-100)."""
-        brightness = max(0, min(brightness, 100))  # Clamp between 0 and 100
-        led_brightness_value = brightness.to_bytes(1, byteorder='little')
-        _LOGGER.debug("Setting LED Brightness to %s%%", brightness)
-        await self.write_gatt_command(UUID_LED_BRIGHTNESS, led_brightness_value)
+    async def set_heater_temperature(self, temp_c: float):
+        """Write the temperature setpoint to the heater's GATT characteristic."""
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set heater temperature - not connected.")
+            return
+        safe_temp = max(40.0, min(temp_c, 230.0))
+        payload = int(safe_temp).to_bytes(2, byteorder="little")  # Assuming integer value
+        try:
+            _LOGGER.debug("Setting heater temperature to %s °C with payload: %s", safe_temp, payload)
+            await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
+            _LOGGER.info("Heater temperature set to %s °C.", safe_temp)
+            self.heater_temperature_setpoint = safe_temp
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error writing heater temperature: %s", e)
