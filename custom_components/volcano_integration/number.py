@@ -40,19 +40,22 @@ class VolcanoAutoShutOffSettingNumber(NumberEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
-        return self._manager.auto_shut_off_setting if self._manager.auto_shut_off_setting else 60
+        """Return the Auto Shutoff Setting in minutes."""
+        return self._manager.auto_shut_off_setting // 60 if self._manager.auto_shut_off_setting else 30
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the number entity is available."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set the Auto Shutoff Setting."""
         minutes = int(value)
         _LOGGER.debug("Setting Auto Shutoff Setting to %s minutes", minutes)
         await self._manager.set_auto_shutoff_setting(minutes)
@@ -77,19 +80,22 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
+        """Return the LED Brightness percentage."""
         return self._manager.led_brightness if self._manager.led_brightness is not None else 50
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the number entity is available."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set the LED Brightness."""
         brightness = int(value)
         _LOGGER.debug("Setting LED Brightness to %s%%", brightness)
         await self._manager.set_led_brightness(brightness)
@@ -114,14 +120,14 @@ class VolcanoHeaterTemperatureSetpointNumber(NumberEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
 
     @property
     def native_value(self):
         """Return the current Heater Temperature Setpoint."""
-        return self._manager.heater_temperature_setpoint or 100  # Default to 100°C if None
+        return self._manager.heater_temperature_setpoint if self._manager.heater_temperature_setpoint else 100
 
     @property
     def available(self):
@@ -134,4 +140,3 @@ class VolcanoHeaterTemperatureSetpointNumber(NumberEntity):
         _LOGGER.debug("Setting Heater Temperature Setpoint to %s°C", temperature)
         await self._manager.set_heater_temperature(temperature)
         self.async_write_ha_state()
-
