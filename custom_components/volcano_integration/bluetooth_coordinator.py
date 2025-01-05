@@ -1,3 +1,5 @@
+# custom_components/volcano_integration/bluetooth_coordinator.py
+
 import asyncio
 import logging
 from bleak import BleakClient, BleakError
@@ -23,6 +25,12 @@ from .const import (
     UUID_HOURS_OF_OPERATION,
     UUID_MINUTES_OF_OPERATION,
     UUID_VIBRATION,
+    REGISTER1_UUID,
+    REGISTER2_UUID,
+    REGISTER3_UUID,
+    VIBRATION_ON_MASK,
+    VIBRATION_OFF_MASK,
+    VIBRATION_BIT_MASK,  # If applicable
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +50,6 @@ VALID_PATTERNS = {
     (0x23, 0x02): ("ON", "ON (0x02)"),
     (0x23, 0x36): ("ON", "ON (0x36)"),
 }
-
 
 class VolcanoBTManager:
     """
@@ -318,7 +325,6 @@ class VolcanoBTManager:
             _LOGGER.error("Error reading Minutes of Operation: %s", e)
             self.minutes_of_operation = None
 
-    
     async def _read_vibration(self):
         """Read the vibration characteristic as a 4-byte integer."""
         if not self._connected or not self._client:
@@ -326,37 +332,32 @@ class VolcanoBTManager:
             return
         try:
             data = await self._client.read_gatt_char(UUID_VIBRATION)
-    
+
             # Expect 4 bytes. If fewer, or more, handle gracefully.
             if len(data) >= 4:
                 # Convert from little-endian to integer
                 raw_value = int.from_bytes(data[:4], byteorder="little")
-    
-                # If we suspect only 0x400 or 0x10400,
-                # interpret accordingly:
-                if raw_value == 0x400:
+
+                # Read-modify-write approach: Identify and preserve other bits
+                # For example, if vibration is controlled by bit 10 (0x0400)
+                # and bit 16 (0x10000) for turning off vibration
+
+                # Determine current state based on bitmask
+                if raw_value & VIBRATION_ON_MASK:
                     self.vibration = "ON"
-                elif raw_value == 0x10400:
-                    self.vibration = "OFF"
                 else:
-                    # Maybe it's some other combination of bits?
-                    _LOGGER.warning(
-                        "Got unexpected vibration value 0x%x; defaulting to OFF",
-                        raw_value
-                    )
                     self.vibration = "OFF"
             else:
                 # If we received fewer than 4 bytes, or an empty result
                 _LOGGER.warning("Received incomplete data for vibration: %s", data)
                 self.vibration = None
-    
+
             _LOGGER.info("Vibration (read): %s", self.vibration)
             self._notify_sensors()
-    
+
         except BleakError as e:
             _LOGGER.error("Error reading vibration: %s", e)
             self.vibration = None
-
 
     async def _subscribe_pump_notifications(self):
         """Subscribe to pump notifications."""
@@ -504,32 +505,52 @@ class VolcanoBTManager:
             _LOGGER.error("Error writing auto shutoff setting: %s", e)
 
     #
-    # NEW: set_vibration(enabled)
+    # UPDATED: set_vibration(enabled)
     #
     async def set_vibration(self, enabled: bool):
-        """Set vibration by writing a 4-byte bitmask."""
+        """Set vibration by modifying only the vibration bits in the control register."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set vibration - not connected.")
             return
-    
-        # Use 0x0400 for ON, 0x10400 for OFF
-        value = 0x400 if enabled else 0x10400
-    
-        # Convert to 4 bytes, little-endian
-        payload = value.to_bytes(4, byteorder="little")
-    
+
         try:
-            _LOGGER.debug(
-                "Writing vibration: %s -> payload: %s",
-                hex(value),
-                payload.hex()
-            )
-            await self._client.write_gatt_char(UUID_VIBRATION, payload)
-    
-            # If it succeeds, store the new state
+            # Step 1: Read the current control register value
+            control_data = await self._client.read_gatt_char(REGISTER3_UUID)
+            _LOGGER.debug("Current control register (Vibration UUID): %s (len=%d)", control_data.hex(), len(control_data))
+
+            # Ensure we have enough data (assuming 4 bytes)
+            if len(control_data) < 4:
+                _LOGGER.error("Received incomplete control register data: %s", control_data.hex())
+                return
+
+            # Convert bytes to integer (little-endian)
+            control_value = int.from_bytes(control_data[:4], byteorder="little")
+            _LOGGER.debug("Control register as integer: 0x{0:08x}".format(control_value))
+
+            # Step 2: Modify only the vibration bits
+            if enabled:
+                # Set the vibration bit(s)
+                new_control_value = control_value | VIBRATION_ON_MASK
+                _LOGGER.debug("Enabling vibration. New control value: 0x{0:08x}".format(new_control_value))
+            else:
+                # Clear the vibration bit(s)
+                new_control_value = control_value & (~VIBRATION_ON_MASK)
+                _LOGGER.debug("Disabling vibration. New control value: 0x{0:08x}".format(new_control_value))
+
+            # Step 3: Convert back to bytes
+            new_control_data = new_control_value.to_bytes(4, byteorder="little")
+            _LOGGER.debug("Writing new control register: %s", new_control_data.hex())
+
+            # Step 4: Write the updated control register back
+            await self._client.write_gatt_char(REGISTER3_UUID, new_control_data)
+
+            # Optional: Verify the write by reading back
+            await self._read_vibration()
+
+            # Update internal state
             self.vibration = "ON" if enabled else "OFF"
             self._notify_sensors()
             _LOGGER.info("Vibration set to %s", self.vibration)
+
         except BleakError as e:
-            _LOGGER.error("Error writing vibration: %s", e)
-    
+            _LOGGER.error("Error setting vibration: %s", e)
