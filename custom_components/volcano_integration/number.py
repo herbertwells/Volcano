@@ -120,14 +120,18 @@ class VolcanoHeaterTemperatureSetpointNumber(NumberEntity):
 
     @property
     def native_value(self):
-        return self._manager.heater_temperature_setpoint if self._manager.heater_temperature_setpoint is not None else 100
+        """Return the current Heater Temperature Setpoint."""
+        return self._manager.heater_temperature_setpoint or 100  # Default to 100°C if None
 
     @property
     def available(self):
-        return (self._manager.bt_status == "CONNECTED")
+        """Return True if the number entity is available."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set the Heater Temperature Setpoint."""
         temperature = int(value)
         _LOGGER.debug("Setting Heater Temperature Setpoint to %s°C", temperature)
         await self._manager.set_heater_temperature(temperature)
         self.async_write_ha_state()
+
