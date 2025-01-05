@@ -4,7 +4,7 @@
 import logging
 
 from homeassistant.components.number import NumberEntity
-from homeassistant.const import UnitOfTime
+from homeassistant.const import UnitOfTemperature
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,11 +31,11 @@ class VolcanoAutoShutOffSettingNumber(NumberEntity):
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Auto Shutoff Setting"
-        self._attr_unique_id = f"volcano_auto_shutoff_setting_{self._manager.bt_address}"
+        self._attr_unique_id = f"volcano_auto_shut_off_setting_{self._manager.bt_address}"
         self._attr_native_min_value = 30  # 30 minutes
         self._attr_native_max_value = 360  # 360 minutes
         self._attr_native_step = 1
-        self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+        self._attr_native_unit_of_measurement = "minutes"
         self._attr_icon = "mdi:timer-outline"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -60,7 +60,7 @@ class VolcanoAutoShutOffSettingNumber(NumberEntity):
         """Set the Auto Shutoff Setting."""
         minutes = int(value)
         _LOGGER.debug("Setting Auto Shutoff Setting to %s minutes", minutes)
-        await self._manager.set_auto_shutoff_setting(minutes)
+        await self._manager.set_auto_shut_off_setting(minutes)
         self.async_write_ha_state()
 
 
