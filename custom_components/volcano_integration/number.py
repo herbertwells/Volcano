@@ -8,7 +8,6 @@ from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Define constants for temperature range and step
 MIN_TEMP = 40.0
 MAX_TEMP = 230.0
 DEFAULT_TEMP = 170.0
@@ -29,6 +28,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
     """Number entity for setting the Volcano's heater temperature (40–230 °C)."""
 
     def __init__(self, manager, config_entry):
+        super().__init__()
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Heater Temperature Setpoint"
@@ -39,19 +39,20 @@ class VolcanoHeaterTempNumber(NumberEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": self._manager.firmware_version or "1.0.0",
+            "sw_version": "1.0.0",
             "via_device": None,
         }
 
         self._attr_native_min_value = MIN_TEMP
         self._attr_native_max_value = MAX_TEMP
         self._attr_native_step = STEP
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+        self._temp_value = DEFAULT_TEMP
 
     @property
     def native_value(self):
-        """Return the current Heater Temperature Setpoint."""
-        return self._manager.heater_temperature_setpoint if self._manager.heater_temperature_setpoint else DEFAULT_TEMP
+        return self._temp_value
 
     @property
     def available(self):
@@ -59,9 +60,9 @@ class VolcanoHeaterTempNumber(NumberEntity):
         return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the Heater Temperature Setpoint."""
         clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
         _LOGGER.debug("User set heater temperature to %.1f °C -> clamped=%.1f", value, clamped_val)
+        self._temp_value = clamped_val
         await self._manager.set_heater_temperature(clamped_val)
         self.async_write_ha_state()
 
