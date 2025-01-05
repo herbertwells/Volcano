@@ -1,5 +1,3 @@
-# bluetooth_coordinator.py
-
 import asyncio
 import logging
 
@@ -44,7 +42,6 @@ VALID_PATTERNS = {
     (0x23, 0x36): ("ON", "ON (0x36)"),
 }
 
-
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
@@ -63,7 +60,7 @@ class VolcanoBTManager:
         self.auto_shut_off = None                 # New Attribute
         self.auto_shut_off_setting = None         # New Attribute
         self.led_brightness = None                # New Attribute
-        self.heater_temperature_setpoint = None    # New Attribute for Heater Temperature Setpoint
+        self.heater_temperature_setpoint = None   # New Attribute for Heater Temperature Setpoint
         self.hours_of_operation = None            # New Attribute
         self.minutes_of_operation = None          # New Attribute
         self._bt_status = BT_STATUS_DISCONNECTED
