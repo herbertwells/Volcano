@@ -67,7 +67,6 @@ class VolcanoBTManager:
         self.led_brightness = None
         self.hours_of_operation = None
         self.minutes_of_operation = None
-        self.vibration = None  # Will store "ON"/"OFF" or True/False
 
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
@@ -172,9 +171,8 @@ class VolcanoBTManager:
                 await self._read_led_brightness()
                 await self._read_hours_of_operation()
                 await self._read_minutes_of_operation()
-                await self._read_vibration()
                 await self._subscribe_pump_notifications()
-                
+
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
 
@@ -302,7 +300,6 @@ class VolcanoBTManager:
             _LOGGER.error("Error reading Hours of Operation: %s", e)
             self.hours_of_operation = None
 
-    
     async def _read_minutes_of_operation(self):
         """Read the Minutes of Operation characteristic."""
         if not self._connected or not self._client:
@@ -320,31 +317,11 @@ class VolcanoBTManager:
             _LOGGER.error("Error reading Minutes of Operation: %s", e)
             self.minutes_of_operation = None
 
-    
-    async def _read_vibration(self):
-        """Read the vibration characteristic (0x00=OFF, 0x01=ON)."""
-        if not self._connected or not self._client:
-            _LOGGER.error("Cannot read vibration - not connected.")
+    async def _subscribe_pump_notifications(self):
+        """Subscribe to pump notifications."""
+        if not self._connected:
             return
-        try:
-            data = await self._client.read_gatt_char(UUID_VIBRATION)
-            if data:
-                # 0x01 = ON, 0x00 = OFF
-                self.vibration = "ON" if data[0] == 1 else "OFF"
-            else:
-                self.vibration = None
-            _LOGGER.info("Vibration: %s", self.vibration)
-            self._notify_sensors()
-        except BleakError as e:
-            _LOGGER.error("Error reading vibration: %s", e)
-            self.vibration = None
-    
-        async def _subscribe_pump_notifications(self):
-            """Subscribe to pump notifications."""
-            if not self._connected:
-                return
 
-        
         def notification_handler(sender, data):
             _LOGGER.debug("Received pump notification from %s: %s", sender, data)
             if len(data) >= 2:
@@ -484,19 +461,3 @@ class VolcanoBTManager:
             _LOGGER.info("Auto Shutoff Setting set to %d minutes", minutes)
         except BleakError as e:
             _LOGGER.error("Error writing auto shutoff setting: %s", e)
-
-
-    async def set_vibration(self, enabled: bool):
-        """Enable/Disable vibration by writing 0x01 or 0x00."""
-        if not self._connected or not self._client:
-            _LOGGER.warning("Cannot set vibration - not connected.")
-            return
-        payload = b"\x01" if enabled else b"\x00"
-        try:
-            await self._client.write_gatt_char(UUID_VIBRATION, payload)
-            self.vibration = "ON" if enabled else "OFF"
-            self._notify_sensors()
-            _LOGGER.info("Vibration set to %s", self.vibration)
-        except BleakError as e:
-            _LOGGER.error("Error writing vibration: %s", e)
-
