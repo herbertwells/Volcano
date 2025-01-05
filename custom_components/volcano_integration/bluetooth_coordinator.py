@@ -55,14 +55,14 @@ class VolcanoBTManager:
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self.ble_firmware_version = None         # New Attribute
-        self.serial_number = None                # New Attribute
-        self.firmware_version = None             # New Attribute
-        self.auto_shut_off = None                 # New Attribute
-        self.auto_shut_off_setting = None         # New Attribute
-        self.led_brightness = None                # New Attribute
-        self.hours_of_operation = None            # New Attribute
-        self.minutes_of_operation = None          # New Attribute
+        self.ble_firmware_version = None         # BLE FW Version
+        self.serial_number = None                # Serial Number
+        self.firmware_version = None             # Volcano FW Version
+        self.auto_shut_off = None                # Auto Shutoff (ON/OFF)
+        self.auto_shut_off_setting = None        # Auto Shutoff Duration (minutes)
+        self.led_brightness = None               # LED Brightness (0–100)
+        self.hours_of_operation = None           # Hours of Operation
+        self.minutes_of_operation = None         # Minutes of Operation
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
@@ -410,3 +410,23 @@ class VolcanoBTManager:
             _LOGGER.info("Heater temperature set to %s °C.", safe_temp)
         except BleakError as e:
             _LOGGER.error("Error writing heater temperature: %s", e)
+
+    #
+    # NEW METHOD: Write LED Brightness (0–100)
+    #
+    async def set_led_brightness(self, brightness: int):
+        """Write the LED Brightness characteristic (0-100)."""
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set LED Brightness - not connected.")
+            return
+        clamped_brightness = max(0, min(brightness, 100))
+        payload = clamped_brightness.to_bytes(1, byteorder="little")
+        try:
+            _LOGGER.debug("Setting LED brightness to %d with payload: %s", clamped_brightness, payload)
+            await self._client.write_gatt_char(UUID_LED_BRIGHTNESS, payload)
+            _LOGGER.info("LED Brightness set to %d", clamped_brightness)
+            # Update our cached brightness and notify
+            self.led_brightness = clamped_brightness
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error writing LED brightness: %s", e)
