@@ -106,10 +106,7 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
             "sw_version": "1.0.0",
             "via_device": None,
         }
-
-        # Place this under Diagnostics:
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
         # LED Brightness range 0–100
         self._attr_native_min_value = 0
         self._attr_native_max_value = 100
@@ -172,10 +169,7 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
             "sw_version": "1.0.0",
             "via_device": None,
         }
-
-        # We can place this under "Configuration" or "Diagnostics" if desired:
-        # self._attr_entity_category = EntityCategory.CONFIG
-
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         # Updated range: 30–360 minutes
         self._attr_native_min_value = 30
         self._attr_native_max_value = 360
