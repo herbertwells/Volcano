@@ -86,6 +86,7 @@ class VolcanoVibrationSwitch(SwitchEntity):
         self._attr_name = "Volcano Vibration"
         self._attr_unique_id = f"volcano_vibration_switch_{self._manager.bt_address}"
         self._attr_icon = "mdi:vibrate"  # or any icon you like
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -94,11 +95,7 @@ class VolcanoVibrationSwitch(SwitchEntity):
             "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
-
-        # Mark it as Diagnostics if you want it hidden under "Diagnostics" by default:
-        from homeassistant.helpers.entity import EntityCategory
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
+        
     @property
     def is_on(self):
         """Return True if vibration is ON."""
