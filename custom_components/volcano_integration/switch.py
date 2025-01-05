@@ -106,14 +106,12 @@ class VolcanoVibrationSwitch(SwitchEntity):
     def available(self):
         """Available when Bluetooth is connected."""
         return (self._manager.bt_status == "CONNECTED")
-
+        
     async def async_turn_on(self, **kwargs):
-        """Enable vibration."""
         await self._manager.set_vibration(True)
         self.async_write_ha_state()
-
+    
     async def async_turn_off(self, **kwargs):
-        """Disable vibration."""
         await self._manager.set_vibration(False)
         self.async_write_ha_state()
 
