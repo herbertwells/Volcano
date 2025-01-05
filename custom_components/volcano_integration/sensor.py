@@ -25,7 +25,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         VolcanoSerialNumberSensor(manager, entry),               # New Sensor
         VolcanoFirmwareVersionSensor(manager, entry),            # New Sensor
         VolcanoAutoShutOffSensor(manager, entry),                # New Sensor
-        VolcanoAutoShutOffSettingSensor(manager, entry),         # New Sensor
         VolcanoLEDBrightnessSensor(manager, entry),              # New Sensor
         VolcanoHoursOfOperationSensor(manager, entry),           # New Sensor
         VolcanoMinutesOfOperationSensor(manager, entry),         # New Sensor
@@ -286,37 +285,6 @@ class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
     @property
     def available(self):
         return (self._manager.bt_status == "CONNECTED" and self._manager.auto_shut_off is not None)
-
-
-# New Sensor: Auto Shutoff Setting
-class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
-    """Sensor to display the Auto Shutoff Setting."""
-
-    def __init__(self, manager, config_entry):
-        super().__init__(manager, config_entry)
-        self._attr_name = "Volcano Auto Shutoff Setting"
-        self._attr_unique_id = f"volcano_auto_shutoff_setting_{self._manager.bt_address}"
-        self._attr_icon = "mdi:timer-outline"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._manager.bt_address)},
-            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def native_value(self):
-        val = self._manager.auto_shut_off_setting
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
-        return val
-
-    @property
-    def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.auto_shut_off_setting is not None)
 
 
 # New Sensor: LED Brightness
