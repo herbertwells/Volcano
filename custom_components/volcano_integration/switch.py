@@ -33,23 +33,26 @@ class VolcanoAutoShutOffSwitch(SwitchEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
+            "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
-        self._attr_is_on = False
+        self._attr_is_on = self._manager.auto_shut_off == "Enabled"
 
     @property
     def is_on(self):
+        """Return True if the switch is on."""
         return self._manager.auto_shut_off == "Enabled"
 
     async def async_turn_on(self, **kwargs):
         """Turn on Auto Shutoff."""
+        _LOGGER.debug("Turning on Auto Shutoff.")
         await self._manager.set_auto_shutoff(True)
         self._attr_is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn off Auto Shutoff."""
+        _LOGGER.debug("Turning off Auto Shutoff.")
         await self._manager.set_auto_shutoff(False)
         self._attr_is_on = False
         self.async_write_ha_state()
