@@ -1,8 +1,6 @@
 import asyncio
 import logging
-
 from bleak import BleakClient, BleakError
-import asyncio
 
 from .const import (
     UUID_TEMP,
