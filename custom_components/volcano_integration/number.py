@@ -1,5 +1,5 @@
 """Platform for number integration - to set heater temperature (40–230 °C)
-   and now LED Brightness (0–100)."""
+   and now LED Brightness (0–100), plus Auto Shutoff Setting in minutes."""
 
 import logging
 
@@ -22,10 +22,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
-    # Ensure both heater and brightness entities are created.
+    # Ensure the heater temp, brightness, and new auto shutoff setting entities are created.
     entities = [
         VolcanoHeaterTempNumber(manager, entry),
         VolcanoLEDBrightnessNumber(manager, entry),
+        VolcanoAutoShutOffMinutesNumber(manager, entry),  # New entity for Auto Shutoff Setting
     ]
     async_add_entities(entities)
 
@@ -38,7 +39,6 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Heater Temperature Setpoint"
-        # Keep the same unique_id as before:
         self._attr_unique_id = f"volcano_heater_temperature_setpoint_{self._manager.bt_address}"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_info = {
@@ -96,7 +96,6 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano LED Brightness (Writer)"
-        # Keep the same unique_id as before:
         self._attr_unique_id = f"volcano_led_brightness_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
         self._attr_device_info = {
@@ -146,5 +145,66 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
 
     async def async_will_remove_from_hass(self):
         """Unregister LED brightness entity to stop receiving updates."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
+
+
+#
+# NEW: VolcanoAutoShutOffMinutesNumber
+#
+class VolcanoAutoShutOffMinutesNumber(NumberEntity):
+    """Number entity for setting the Volcano's Auto Shutoff Setting (in minutes)."""
+
+    def __init__(self, manager, config_entry):
+        super().__init__()
+        self._manager = manager
+        self._config_entry = config_entry
+        self._attr_name = "Volcano Auto Shutoff Setting"
+        self._attr_unique_id = f"volcano_auto_shutoff_minutes_{self._manager.bt_address}"
+        self._attr_icon = "mdi:timer-cog"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._manager.bt_address)},
+            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
+            "manufacturer": "Storz & Bickel",
+            "model": "Volcano Hybrid Vaporizer",
+            "sw_version": "1.0.0",
+            "via_device": None,
+        }
+
+        # We can place this under "Configuration" or "Diagnostics" if preferred:
+        # self._attr_entity_category = EntityCategory.CONFIG
+
+        # Example range for minutes (1–240):
+        self._attr_native_min_value = 1
+        self._attr_native_max_value = 240
+        self._attr_native_step = 1
+        self._attr_unit_of_measurement = "min"
+
+    @property
+    def native_value(self):
+        """Return the current auto shutoff minutes from the manager."""
+        if self._manager.auto_shut_off_setting is not None:
+            return self._manager.auto_shut_off_setting
+        return 0
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Write the new auto shutoff time in minutes to the device."""
+        minutes = int(value)
+        _LOGGER.debug("User set Auto Shutoff to %d minutes", minutes)
+        await self._manager.set_auto_shutoff_setting(minutes)
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register for state updates."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister to stop receiving updates."""
         _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
         self._manager.unregister_sensor(self)
