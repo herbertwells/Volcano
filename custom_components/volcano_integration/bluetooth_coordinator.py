@@ -486,15 +486,29 @@ class VolcanoBTManager:
     # NEW: set_vibration(enabled)
     #
     async def set_vibration(self, enabled: bool):
-        """Set vibration by writing 0x01 for ON, or 0x00 for OFF."""
+        """Set vibration by writing a 4-byte bitmask."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set vibration - not connected.")
             return
-        payload = b"\x01" if enabled else b"\x00"
+    
+        # Use 0x0400 for ON, 0x10400 for OFF
+        value = 0x400 if enabled else 0x10400
+    
+        # Convert to 4 bytes, little-endian
+        payload = value.to_bytes(4, byteorder="little")
+    
         try:
+            _LOGGER.debug(
+                "Writing vibration: %s -> payload: %s",
+                hex(value),
+                payload.hex()
+            )
             await self._client.write_gatt_char(UUID_VIBRATION, payload)
+    
+            # If it succeeds, store the new state
             self.vibration = "ON" if enabled else "OFF"
             self._notify_sensors()
             _LOGGER.info("Vibration set to %s", self.vibration)
         except BleakError as e:
             _LOGGER.error("Error writing vibration: %s", e)
+    
