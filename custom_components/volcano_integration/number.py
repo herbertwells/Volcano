@@ -1,10 +1,11 @@
-"""Platform for number integration - to set heater temperature (40–230 °C) 
+"""Platform for number integration - to set heater temperature (40–230 °C)
    and now LED Brightness (0–100)."""
+
 import logging
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
-
+from homeassistant.helpers.entity import EntityCategory  # For Diagnostics
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,16 +18,15 @@ STEP = 1.0  # 1 °C increments
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano number entities for a config entry."""
-    _LOGGER.debug("Setting up Volcano number for entry: %s", entry.entry_id)
+    _LOGGER.debug("Setting up Volcano numbers for entry: %s", entry.entry_id)
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
-    # Existing temperature setpoint entity
-    entities = [VolcanoHeaterTempNumber(manager, entry)]
-
-    # NEW: Add LED Brightness number writer
-    entities.append(VolcanoLEDBrightnessNumber(manager, entry))
-
+    # Ensure both heater and brightness entities are created.
+    entities = [
+        VolcanoHeaterTempNumber(manager, entry),
+        VolcanoLEDBrightnessNumber(manager, entry),
+    ]
     async_add_entities(entities)
 
 
@@ -38,6 +38,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Heater Temperature Setpoint"
+        # Keep the same unique_id as before:
         self._attr_unique_id = f"volcano_heater_temperature_setpoint_{self._manager.bt_address}"
         self._attr_icon = "mdi:thermometer"
         self._attr_device_info = {
@@ -87,9 +88,6 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._manager.unregister_sensor(self)
 
 
-#
-# NEW: Volcano LED Brightness Number
-#
 class VolcanoLEDBrightnessNumber(NumberEntity):
     """Number entity for setting the Volcano's LED Brightness (0–100)."""
 
@@ -98,9 +96,9 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano LED Brightness (Writer)"
+        # Keep the same unique_id as before:
         self._attr_unique_id = f"volcano_led_brightness_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -110,17 +108,21 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
             "via_device": None,
         }
 
+        # Place this under Diagnostics:
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
         # LED Brightness range 0–100
         self._attr_native_min_value = 0
         self._attr_native_max_value = 100
         self._attr_native_step = 1
-        # No standard brightness unit in HA; we'll omit or use "percent"
         self._attr_unit_of_measurement = "%"
 
     @property
     def native_value(self):
         # Return the current brightness stored by the manager
-        return self._manager.led_brightness if self._manager.led_brightness is not None else 0
+        if self._manager.led_brightness is not None:
+            return self._manager.led_brightness
+        return 0
 
     @property
     def available(self):
@@ -128,7 +130,6 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
-        # Clamp to 0..100 (manager also clamps, but let's do it here as well)
         brightness_int = int(max(0, min(value, 100)))
         _LOGGER.debug(
             "User set LED Brightness to %.1f -> clamped=%d",
