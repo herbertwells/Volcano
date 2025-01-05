@@ -24,6 +24,7 @@ from .const import (
     UUID_LED_BRIGHTNESS,
     UUID_HOURS_OF_OPERATION,
     UUID_MINUTES_OF_OPERATION,
+    UUID VIBRATION,
 )
 
 _LOGGER = logging.getLogger(__name__)
