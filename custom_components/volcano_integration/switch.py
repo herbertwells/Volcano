@@ -31,6 +31,7 @@ class VolcanoAutoShutOffSwitch(SwitchEntity):
         self._attr_name = "Volcano Auto Shutoff"
         self._attr_unique_id = f"volcano_auto_shut_off_switch_{self._manager.bt_address}"
         self._attr_icon = "mdi:timer"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
