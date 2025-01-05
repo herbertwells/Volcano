@@ -2,6 +2,8 @@ import asyncio
 import logging
 
 from bleak import BleakClient, BleakError
+import asyncio
+
 from .const import (
     UUID_TEMP,
     UUID_PUMP_NOTIFICATIONS,
@@ -145,7 +147,9 @@ class VolcanoBTManager:
             _LOGGER.info("Attempting to connect to Bluetooth device %s...", self.bt_address)
             self.bt_status = BT_STATUS_CONNECTING
             self._client = BleakClient(self.bt_address)
-            await self._client.connect()
+
+            # Extend default connection timeout to 30s to allow more time for discovery
+            await self._client.connect(timeout=30.0)
 
             self._connected = self._client.is_connected
             if self._connected:
@@ -163,9 +167,21 @@ class VolcanoBTManager:
                 await self._subscribe_pump_notifications()
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
+
+        except asyncio.TimeoutError:
+            # Bleak might raise this directly if the connect call times out
+            _LOGGER.error("Bluetooth connection timed out to %s", self.bt_address)
+            self.bt_status = BT_STATUS_ERROR
+            await asyncio.sleep(RECONNECT_INTERVAL)
+
         except BleakError as e:
-            if "slot Bluetooth" in str(e):
-                _LOGGER.error("Critical slot Bluetooth error: %s", e)
+            # If Bleak wraps a TimeoutError or other issue in BleakError
+            if isinstance(e.__cause__, asyncio.TimeoutError):
+                _LOGGER.error(
+                    "Bluetooth connection timed out (Bleak) to %s: %s",
+                    self.bt_address,
+                    e,
+                )
             else:
                 _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = BT_STATUS_ERROR
@@ -411,11 +427,8 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error writing heater temperature: %s", e)
 
-    #
-    # NEW METHOD: Write LED Brightness (0–100)
-    #
     async def set_led_brightness(self, brightness: int):
-        """Write the LED Brightness characteristic (0-100)."""
+        """Write the LED Brightness characteristic (0–100)."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set LED Brightness - not connected.")
             return
