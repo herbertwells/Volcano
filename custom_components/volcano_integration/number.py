@@ -171,12 +171,12 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
             "via_device": None,
         }
 
-        # We can place this under "Configuration" or "Diagnostics" if preferred:
+        # We can place this under "Configuration" or "Diagnostics" if desired:
         # self._attr_entity_category = EntityCategory.CONFIG
 
-        # Example range for minutes (1–240):
-        self._attr_native_min_value = 1
-        self._attr_native_max_value = 240
+        # Updated range: 30–360 minutes
+        self._attr_native_min_value = 30
+        self._attr_native_max_value = 360
         self._attr_native_step = 1
         self._attr_unit_of_measurement = "min"
 
