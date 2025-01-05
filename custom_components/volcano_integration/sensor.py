@@ -311,7 +311,7 @@ class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
     @property
     def native_value(self):
         val = self._manager.auto_shut_off_setting
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        _LOGGER.debug("%s: native_value -> '%s' minutes", type(self).__name__, val)
         return val
 
     @property
@@ -342,7 +342,7 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
     @property
     def native_value(self):
         val = self._manager.led_brightness
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        _LOGGER.debug("%s: native_value -> '%s%%'", type(self).__name__, val)
         return val
 
     @property
@@ -373,7 +373,7 @@ class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
     @property
     def native_value(self):
         val = self._manager.hours_of_operation
-        _LOGGER.debug("%s: native_value -> '%s' hours", type(self).__name__, val)
+        _LOGGER.debug("%s: native_value -> '%s hours'", type(self).__name__, val)
         return val
 
     @property
@@ -404,7 +404,7 @@ class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
     @property
     def native_value(self):
         val = self._manager.minutes_of_operation
-        _LOGGER.debug("%s: native_value -> '%s' minutes", type(self).__name__, val)
+        _LOGGER.debug("%s: native_value -> '%s minutes'", type(self).__name__, val)
         return val
 
     @property
