@@ -100,6 +100,7 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         self._attr_name = "Volcano LED Brightness (Writer)"
         self._attr_unique_id = f"volcano_led_brightness_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
