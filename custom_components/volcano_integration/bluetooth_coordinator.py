@@ -67,6 +67,7 @@ class VolcanoBTManager:
         self.led_brightness = None
         self.hours_of_operation = None
         self.minutes_of_operation = None
+        self.vibration = None  # "ON" or "OFF" once read
 
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
@@ -171,6 +172,7 @@ class VolcanoBTManager:
                 await self._read_led_brightness()
                 await self._read_hours_of_operation()
                 await self._read_minutes_of_operation()
+                await self._read_vibration()
                 await self._subscribe_pump_notifications()
 
             else:
@@ -317,6 +319,25 @@ class VolcanoBTManager:
             _LOGGER.error("Error reading Minutes of Operation: %s", e)
             self.minutes_of_operation = None
 
+    
+    async def _read_vibration(self):
+        """Read the vibration characteristic (0x00=OFF, 0x01=ON)."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read vibration - not connected.")
+            return
+        try:
+            data = await self._client.read_gatt_char(UUID_VIBRATION)
+            if data:
+                self.vibration = "ON" if data[0] == 1 else "OFF"
+            else:
+                self.vibration = None
+            _LOGGER.info("Vibration: %s", self.vibration)
+            self._notify_sensors()
+        except BleakError as e:
+            _LOGGER.error("Error reading vibration: %s", e)
+            self.vibration = None
+
+
     async def _subscribe_pump_notifications(self):
         """Subscribe to pump notifications."""
         if not self._connected:
@@ -461,3 +482,20 @@ class VolcanoBTManager:
             _LOGGER.info("Auto Shutoff Setting set to %d minutes", minutes)
         except BleakError as e:
             _LOGGER.error("Error writing auto shutoff setting: %s", e)
+
+    #
+    # NEW: set_vibration(enabled)
+    #
+    async def set_vibration(self, enabled: bool):
+        """Set vibration by writing 0x01 for ON, or 0x00 for OFF."""
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set vibration - not connected.")
+            return
+        payload = b"\x01" if enabled else b"\x00"
+        try:
+            await self._client.write_gatt_char(UUID_VIBRATION, payload)
+            self.vibration = "ON" if enabled else "OFF"
+            self._notify_sensors()
+            _LOGGER.info("Vibration set to %s", self.vibration)
+        except BleakError as e:
+            _LOGGER.error("Error writing vibration: %s", e)
