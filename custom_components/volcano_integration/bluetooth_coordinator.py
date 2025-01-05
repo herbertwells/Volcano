@@ -54,17 +54,20 @@ class VolcanoBTManager:
         self.bt_address = bt_address
         self._client = None
         self._connected = False
+
+        # Existing attributes
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
-        self.ble_firmware_version = None         # BLE FW Version
-        self.serial_number = None                # Serial Number
-        self.firmware_version = None             # Volcano FW Version
-        self.auto_shut_off = None                # Auto Shutoff (ON/OFF)
-        self.auto_shut_off_setting = None        # Auto Shutoff Duration (minutes)
-        self.led_brightness = None               # LED Brightness (0–100)
-        self.hours_of_operation = None           # Hours of Operation
-        self.minutes_of_operation = None         # Minutes of Operation
+        self.ble_firmware_version = None
+        self.serial_number = None
+        self.firmware_version = None
+        self.auto_shut_off = None             # "ON" or "OFF" (or "Enabled"/"Disabled")
+        self.auto_shut_off_setting = None     # Minutes (or possibly None)
+        self.led_brightness = None
+        self.hours_of_operation = None
+        self.minutes_of_operation = None
+
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
         self._temp_poll_task = None
@@ -86,12 +89,12 @@ class VolcanoBTManager:
             self._notify_sensors()
 
     def register_sensor(self, sensor_entity):
-        """Register a sensor to receive updates."""
+        """Register a sensor or entity to receive updates."""
         if sensor_entity not in self._sensors:
             self._sensors.append(sensor_entity)
 
     def unregister_sensor(self, sensor_entity):
-        """Unregister a sensor from receiving updates."""
+        """Unregister a sensor or entity from receiving updates."""
         if sensor_entity in self._sensors:
             self._sensors.remove(sensor_entity)
 
@@ -143,18 +146,22 @@ class VolcanoBTManager:
 
     async def _connect(self):
         """Attempt to connect to the BLE device."""
+        from bleak import BleakClient, BleakError
+        import asyncio
+
         try:
             _LOGGER.info("Attempting to connect to Bluetooth device %s...", self.bt_address)
             self.bt_status = BT_STATUS_CONNECTING
             self._client = BleakClient(self.bt_address)
 
-            # Extend default connection timeout to 30s to allow more time for discovery
+            # Connect with a longer timeout if needed
             await self._client.connect(timeout=30.0)
 
             self._connected = self._client.is_connected
             if self._connected:
                 _LOGGER.info("Bluetooth successfully connected to %s", self.bt_address)
                 self.bt_status = BT_STATUS_CONNECTED
+
                 # Read all required characteristics before starting other operations
                 await self._read_ble_firmware_version()
                 await self._read_serial_number()
@@ -165,23 +172,18 @@ class VolcanoBTManager:
                 await self._read_hours_of_operation()
                 await self._read_minutes_of_operation()
                 await self._subscribe_pump_notifications()
+
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
 
         except asyncio.TimeoutError:
-            # Bleak might raise this directly if the connect call times out
             _LOGGER.error("Bluetooth connection timed out to %s", self.bt_address)
             self.bt_status = BT_STATUS_ERROR
             await asyncio.sleep(RECONNECT_INTERVAL)
 
         except BleakError as e:
-            # If Bleak wraps a TimeoutError or other issue in BleakError
             if isinstance(e.__cause__, asyncio.TimeoutError):
-                _LOGGER.error(
-                    "Bluetooth connection timed out (Bleak) to %s: %s",
-                    self.bt_address,
-                    e,
-                )
+                _LOGGER.error("Bluetooth connection timed out (Bleak) to %s: %s", self.bt_address, e)
             else:
                 _LOGGER.warning("Bluetooth connection warning: %s -> Retrying...", e)
             self.bt_status = BT_STATUS_ERROR
@@ -193,9 +195,8 @@ class VolcanoBTManager:
             _LOGGER.error("Cannot read BLE Firmware Version - not connected.")
             return
         try:
-            _LOGGER.debug("Reading BLE Firmware Version from UUID: %s", UUID_BLE_FIRMWARE_VERSION)
             data = await self._client.read_gatt_char(UUID_BLE_FIRMWARE_VERSION)
-            self.ble_firmware_version = data.decode('utf-8').strip()
+            self.ble_firmware_version = data.decode("utf-8").strip()
             _LOGGER.info("BLE Firmware Version: %s", self.ble_firmware_version)
             self._notify_sensors()
         except BleakError as e:
@@ -208,9 +209,8 @@ class VolcanoBTManager:
             _LOGGER.error("Cannot read Serial Number - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Serial Number from UUID: %s", UUID_SERIAL_NUMBER)
             data = await self._client.read_gatt_char(UUID_SERIAL_NUMBER)
-            self.serial_number = data.decode('utf-8').strip()
+            self.serial_number = data.decode("utf-8").strip()
             _LOGGER.info("Serial Number: %s", self.serial_number)
             self._notify_sensors()
         except BleakError as e:
@@ -223,9 +223,8 @@ class VolcanoBTManager:
             _LOGGER.error("Cannot read Firmware Version - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Firmware Version from UUID: %s", UUID_FIRMWARE_VERSION)
             data = await self._client.read_gatt_char(UUID_FIRMWARE_VERSION)
-            self.firmware_version = data.decode('utf-8').strip()
+            self.firmware_version = data.decode("utf-8").strip()
             _LOGGER.info("Firmware Version: %s", self.firmware_version)
             self._notify_sensors()
         except BleakError as e:
@@ -233,61 +232,53 @@ class VolcanoBTManager:
             self.firmware_version = None
 
     async def _read_auto_shut_off(self):
-        """Read the Auto Shutoff characteristic."""
+        """Read the Auto Shutoff characteristic (0x00=OFF, 0x01=ON)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read Auto Shutoff - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Auto Shutoff from UUID: %s", UUID_AUTO_SHUT_OFF)
             data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF)
-            # Assuming the data is a single byte representing ON/OFF
             if data:
                 self.auto_shut_off = "ON" if data[0] == 1 else "OFF"
-                _LOGGER.info("Auto Shutoff: %s", self.auto_shut_off)
-                self._notify_sensors()
             else:
-                _LOGGER.warning("Received empty data for Auto Shutoff.")
                 self.auto_shut_off = None
+            _LOGGER.info("Auto Shutoff: %s", self.auto_shut_off)
+            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Auto Shutoff: %s", e)
             self.auto_shut_off = None
 
     async def _read_auto_shut_off_setting(self):
-        """Read the Auto Shutoff Setting characteristic."""
+        """Read the Auto Shutoff Setting characteristic (2-byte: seconds)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read Auto Shutoff Setting - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Auto Shutoff Setting from UUID: %s", UUID_AUTO_SHUT_OFF_SETTING)
             data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF_SETTING)
-            # Assuming the data represents the shutoff duration in minutes as an integer
             if len(data) >= 2:
-                self.auto_shut_off_setting = int.from_bytes(data[:2], byteorder="little")
-                _LOGGER.info("Auto Shutoff Setting: %s minutes", self.auto_shut_off_setting)
-                self._notify_sensors()
+                total_seconds = int.from_bytes(data[:2], byteorder="little")
+                self.auto_shut_off_setting = total_seconds // 60
+                _LOGGER.info("Auto Shutoff Setting: %d minutes", self.auto_shut_off_setting)
             else:
-                _LOGGER.warning("Received incomplete data for Auto Shutoff Setting.")
                 self.auto_shut_off_setting = None
+            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Auto Shutoff Setting: %s", e)
             self.auto_shut_off_setting = None
 
     async def _read_led_brightness(self):
-        """Read the LED Brightness characteristic."""
+        """Read the LED Brightness characteristic (0–100)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read LED Brightness - not connected.")
             return
         try:
-            _LOGGER.debug("Reading LED Brightness from UUID: %s", UUID_LED_BRIGHTNESS)
             data = await self._client.read_gatt_char(UUID_LED_BRIGHTNESS)
-            # Assuming the data is a single byte representing brightness level (0-100)
             if data:
                 self.led_brightness = data[0]
-                _LOGGER.info("LED Brightness: %s%%", self.led_brightness)
-                self._notify_sensors()
             else:
-                _LOGGER.warning("Received empty data for LED Brightness.")
                 self.led_brightness = None
+            _LOGGER.info("LED Brightness: %s%%", self.led_brightness)
+            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading LED Brightness: %s", e)
             self.led_brightness = None
@@ -298,15 +289,13 @@ class VolcanoBTManager:
             _LOGGER.error("Cannot read Hours of Operation - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Hours of Operation from UUID: %s", UUID_HOURS_OF_OPERATION)
             data = await self._client.read_gatt_char(UUID_HOURS_OF_OPERATION)
             if len(data) >= 2:
                 self.hours_of_operation = int.from_bytes(data[:2], byteorder="little")
-                _LOGGER.info("Hours of Operation: %s hours", self.hours_of_operation)
-                self._notify_sensors()
             else:
-                _LOGGER.warning("Received incomplete data for Hours of Operation.")
                 self.hours_of_operation = None
+            _LOGGER.info("Hours of Operation: %s hours", self.hours_of_operation)
+            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Hours of Operation: %s", e)
             self.hours_of_operation = None
@@ -317,15 +306,13 @@ class VolcanoBTManager:
             _LOGGER.error("Cannot read Minutes of Operation - not connected.")
             return
         try:
-            _LOGGER.debug("Reading Minutes of Operation from UUID: %s", UUID_MINUTES_OF_OPERATION)
             data = await self._client.read_gatt_char(UUID_MINUTES_OF_OPERATION)
             if len(data) >= 2:
                 self.minutes_of_operation = int.from_bytes(data[:2], byteorder="little")
-                _LOGGER.info("Minutes of Operation: %s minutes", self.minutes_of_operation)
-                self._notify_sensors()
             else:
-                _LOGGER.warning("Received incomplete data for Minutes of Operation.")
                 self.minutes_of_operation = None
+            _LOGGER.info("Minutes of Operation: %s minutes", self.minutes_of_operation)
+            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Minutes of Operation: %s", e)
             self.minutes_of_operation = None
@@ -336,7 +323,6 @@ class VolcanoBTManager:
             return
 
         def notification_handler(sender, data):
-            """Handle incoming pump notifications."""
             _LOGGER.debug("Received pump notification from %s: %s", sender, data)
             if len(data) >= 2:
                 b1, b2 = data[0], data[1]
@@ -345,11 +331,9 @@ class VolcanoBTManager:
                 else:
                     self.heat_state = f"0x{b1:02X}"
                     self.pump_state = f"0x{b2:02X}"
-                _LOGGER.debug("Parsed Heat State: %s, Pump State: %s", self.heat_state, self.pump_state)
             self._notify_sensors()
 
         try:
-            _LOGGER.debug("Subscribing to pump notifications on UUID: %s", UUID_PUMP_NOTIFICATIONS)
             await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
             _LOGGER.info("Subscribed to pump notifications.")
         except BleakError as e:
@@ -363,16 +347,14 @@ class VolcanoBTManager:
             await asyncio.sleep(TEMP_POLL_INTERVAL)
 
     async def _read_temperature(self):
-        """Read the temperature characteristic."""
+        """Read the temperature characteristic (2-byte: .1°C)."""
         if not self._connected or not self._client:
             return
         try:
-            _LOGGER.debug("Reading temperature from UUID: %s", UUID_TEMP)
             data = await self._client.read_gatt_char(UUID_TEMP)
             if len(data) >= 2:
                 raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
                 self.current_temperature = raw_16 / 10.0
-                _LOGGER.debug("Read temperature: %s °C", self.current_temperature)
             else:
                 self.current_temperature = None
                 _LOGGER.warning("Received incomplete temperature data: %s", data)
@@ -383,7 +365,7 @@ class VolcanoBTManager:
             await self._disconnect()
 
     def _notify_sensors(self):
-        """Notify all registered sensors that new data is available."""
+        """Notify all registered sensors/entities that new data is available."""
         _LOGGER.debug("Notifying %d sensors of new data.", len(self._sensors))
         for sensor_entity in self._sensors:
             sensor_entity.schedule_update_ha_state(True)
@@ -407,7 +389,6 @@ class VolcanoBTManager:
             _LOGGER.warning("Cannot write to %s - not connected.", write_uuid)
             return
         try:
-            _LOGGER.debug("Writing to UUID: %s with payload: %s", write_uuid, payload)
             await self._client.write_gatt_char(write_uuid, payload)
             _LOGGER.info("Successfully wrote to UUID: %s", write_uuid)
         except BleakError as e:
@@ -421,7 +402,6 @@ class VolcanoBTManager:
         safe_temp = max(40.0, min(temp_c, 230.0))
         payload = int(safe_temp * 10).to_bytes(2, byteorder="little")
         try:
-            _LOGGER.debug("Setting heater temperature to %s °C with payload: %s", safe_temp, payload)
             await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
             _LOGGER.info("Heater temperature set to %s °C.", safe_temp)
         except BleakError as e:
@@ -435,11 +415,49 @@ class VolcanoBTManager:
         clamped_brightness = max(0, min(brightness, 100))
         payload = clamped_brightness.to_bytes(1, byteorder="little")
         try:
-            _LOGGER.debug("Setting LED brightness to %d with payload: %s", clamped_brightness, payload)
             await self._client.write_gatt_char(UUID_LED_BRIGHTNESS, payload)
-            _LOGGER.info("LED Brightness set to %d", clamped_brightness)
-            # Update our cached brightness and notify
             self.led_brightness = clamped_brightness
             self._notify_sensors()
+            _LOGGER.info("LED Brightness set to %d", clamped_brightness)
         except BleakError as e:
             _LOGGER.error("Error writing LED brightness: %s", e)
+
+    #
+    # NEW: set_auto_shutoff(enabled) -> writes 0x00 or 0x01 to the same UUID
+    #
+    async def set_auto_shutoff(self, enabled: bool):
+        """Enable/Disable Auto Shutoff by writing 0x01 (on) or 0x00 (off)."""
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set Auto Shutoff - not connected.")
+            return
+        payload = b"\x01" if enabled else b"\x00"
+        try:
+            await self._client.write_gatt_char(UUID_AUTO_SHUT_OFF, payload)
+            self.auto_shut_off = "ON" if enabled else "OFF"
+            self._notify_sensors()
+            _LOGGER.info("Auto Shutoff set to %s", self.auto_shut_off)
+        except BleakError as e:
+            _LOGGER.error("Error writing auto shutoff: %s", e)
+
+    #
+    # NEW: set_auto_shutoff_setting(minutes) -> writes 2-byte little-endian of (minutes*60)
+    #
+    async def set_auto_shutoff_setting(self, minutes: int):
+        """Write the Auto Shutoff Setting in minutes (converted to seconds)."""
+        if not self._connected or not self._client:
+            _LOGGER.warning("Cannot set Auto Shutoff Setting - not connected.")
+            return
+
+        # You can clamp the range if desired, e.g. 5..240 minutes
+        # minutes = max(5, min(minutes, 240))
+
+        total_seconds = minutes * 60
+        payload = total_seconds.to_bytes(2, byteorder="little")
+
+        try:
+            await self._client.write_gatt_char(UUID_AUTO_SHUT_OFF_SETTING, payload)
+            self.auto_shut_off_setting = minutes
+            self._notify_sensors()
+            _LOGGER.info("Auto Shutoff Setting set to %d minutes", minutes)
+        except BleakError as e:
+            _LOGGER.error("Error writing auto shutoff setting: %s", e)
