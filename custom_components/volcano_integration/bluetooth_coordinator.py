@@ -320,18 +320,39 @@ class VolcanoBTManager:
 
     
     async def _read_vibration(self):
-        """Read the vibration characteristic (0x00=OFF, 0x01=ON)."""
+        """Read the vibration characteristic as a 4-byte integer."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read vibration - not connected.")
             return
         try:
             data = await self._client.read_gatt_char(UUID_VIBRATION)
-            if data:
-                self.vibration = "ON" if data[0] == 1 else "OFF"
+    
+            # Expect 4 bytes. If fewer, or more, handle gracefully.
+            if len(data) >= 4:
+                # Convert from little-endian to integer
+                raw_value = int.from_bytes(data[:4], byteorder="little")
+    
+                # If we suspect only 0x400 or 0x10400,
+                # interpret accordingly:
+                if raw_value == 0x400:
+                    self.vibration = "ON"
+                elif raw_value == 0x10400:
+                    self.vibration = "OFF"
+                else:
+                    # Maybe it's some other combination of bits?
+                    _LOGGER.warning(
+                        "Got unexpected vibration value 0x%x; defaulting to OFF",
+                        raw_value
+                    )
+                    self.vibration = "OFF"
             else:
+                # If we received fewer than 4 bytes, or an empty result
+                _LOGGER.warning("Received incomplete data for vibration: %s", data)
                 self.vibration = None
-            _LOGGER.info("Vibration: %s", self.vibration)
+    
+            _LOGGER.info("Vibration (read): %s", self.vibration)
             self._notify_sensors()
+    
         except BleakError as e:
             _LOGGER.error("Error reading vibration: %s", e)
             self.vibration = None
