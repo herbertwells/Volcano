@@ -1,3 +1,5 @@
+# sensor.py
+
 """Platform for sensor integration."""
 import logging
 
