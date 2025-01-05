@@ -341,10 +341,7 @@ class VolcanoAutoShutOffSettingSensor(VolcanoBaseSensor):
     def native_value(self):
         """Return the Auto Shutoff Setting in minutes."""
         val = self._manager.auto_shut_off_setting
-        if val is not None:
-            minutes = val // 60
-        else:
-            minutes = 0
+        minutes = val // 60 if val else 30
         _LOGGER.debug("%s: native_value -> '%s' minutes", type(self).__name__, minutes)
         return minutes
 
