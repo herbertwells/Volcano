@@ -1,3 +1,5 @@
+# switch.py
+
 """Platform for switch integration."""
 import logging
 
