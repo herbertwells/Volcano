@@ -162,6 +162,8 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
         self._attr_name = "Volcano Auto Shutoff Setting"
         self._attr_unique_id = f"volcano_auto_shutoff_minutes_{self._manager.bt_address}"
         self._attr_icon = "mdi:timer-cog"
+        self._attr_native_min_value = 30
+        self._attr_native_max_value = 360
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
