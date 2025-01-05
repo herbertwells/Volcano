@@ -1,9 +1,8 @@
-# switch.py
-
 """Platform for switch integration."""
 import logging
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.helpers.entity import EntityCategory
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,6 +14,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
+    # Add or keep any existing switches (pump on/off, etc.)
     entities = [
         VolcanoAutoShutOffSwitch(manager, entry),
     ]
@@ -22,7 +22,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class VolcanoAutoShutOffSwitch(SwitchEntity):
-    """Switch entity to control Auto Shutoff."""
+    """Switch entity to enable/disable Auto Shutoff."""
 
     def __init__(self, manager, config_entry):
         self._manager = manager
@@ -38,23 +38,39 @@ class VolcanoAutoShutOffSwitch(SwitchEntity):
             "sw_version": self._manager.firmware_version or "1.0.0",
             "via_device": None,
         }
-        self._attr_is_on = self._manager.auto_shut_off == "Enabled"
+
+        # If you'd like it under "Configuration" or "Diagnostics," uncomment:
+        # from homeassistant.helpers.entity import EntityCategory
+        # self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def is_on(self):
-        """Return True if the switch is on."""
-        return self._manager.auto_shut_off == "Enabled"
+        """Return True if auto shutoff is ON (enabled)."""
+        return self._manager.auto_shut_off == "ON"
+
+    @property
+    def available(self):
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_turn_on(self, **kwargs):
-        """Turn on Auto Shutoff."""
+        """Enable Auto Shutoff."""
         _LOGGER.debug("Turning on Auto Shutoff.")
         await self._manager.set_auto_shutoff(True)
-        self._attr_is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
-        """Turn off Auto Shutoff."""
+        """Disable Auto Shutoff."""
         _LOGGER.debug("Turning off Auto Shutoff.")
         await self._manager.set_auto_shutoff(False)
-        self._attr_is_on = False
         self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register for state updates."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister from manager."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
