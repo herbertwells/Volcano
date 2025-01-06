@@ -11,25 +11,25 @@ from .const import (
     BT_STATUS_CONNECTED,
     BT_STATUS_ERROR,
     VIBRATION_BIT_MASK,
-    # REGISTER1_UUID,  # Removed duplicate to prevent conflicts
-    REGISTER2_UUID,
-    REGISTER3_UUID,
-    UUID_TEMP,
-    UUID_PUMP_NOTIFICATIONS,
-    UUID_PUMP_ON,
-    UUID_PUMP_OFF,
-    UUID_HEAT_ON,
-    UUID_HEAT_OFF,
-    UUID_HEATER_SETPOINT,
-    UUID_BLE_FIRMWARE_VERSION,
-    UUID_SERIAL_NUMBER,
-    UUID_FIRMWARE_VERSION,
-    UUID_AUTO_SHUT_OFF,
-    UUID_AUTO_SHUT_OFF_SETTING,
-    UUID_LED_BRIGHTNESS,
-    UUID_HOURS_OF_OPERATION,
-    UUID_MINUTES_OF_OPERATION,
-    UUID_VIBRATION,
+    REGISTER1_UUID,          # Pump Notifications
+    REGISTER2_UUID,          # [Specify Purpose]
+    REGISTER3_UUID,          # Vibration Control
+    UUID_TEMP,               # Current Temperature
+    UUID_PUMP_NOTIFICATIONS, # Pump Notifications
+    UUID_PUMP_ON,            # Pump On
+    UUID_PUMP_OFF,           # Pump Off
+    UUID_HEAT_ON,            # Heat On
+    UUID_HEAT_OFF,           # Heat Off
+    UUID_HEATER_SETPOINT,    # Heater Setpoint
+    UUID_BLE_FIRMWARE_VERSION,    # BLE Firmware Version
+    UUID_SERIAL_NUMBER,             # Serial Number
+    UUID_FIRMWARE_VERSION,          # Volcano Firmware Version
+    UUID_AUTO_SHUT_OFF,             # Auto Shutoff
+    UUID_AUTO_SHUT_OFF_SETTING,     # Auto Shutoff Setting
+    UUID_LED_BRIGHTNESS,            # LED Brightness
+    UUID_HOURS_OF_OPERATION,        # Hours of Operation
+    UUID_MINUTES_OF_OPERATION,      # Minutes of Operation
+    UUID_VIBRATION,                  # Vibration Control
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -79,7 +79,6 @@ class VolcanoBTManager:
         self._temp_poll_task = None
         self._stop_event = asyncio.Event()
         self._sensors = []
-        self.slot_bluetooth_error = False
 
     @property
     def bt_status(self):
@@ -88,7 +87,7 @@ class VolcanoBTManager:
 
     @bt_status.setter
     def bt_status(self, value):
-        """Set the Bluetooth status and notify sensors/entities."""
+        """Set the Bluetooth status and notify sensors/buttons."""
         if self._bt_status != value:
             _LOGGER.debug("BT status changed from %s to %s", self._bt_status, value)
             self._bt_status = value
@@ -341,7 +340,7 @@ class VolcanoBTManager:
             await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
             _LOGGER.info("Subscribed to pump notifications.")
         except BleakError as e:
-            _LOGGER.warning("Error subscribing to notifications: %s", e)
+            _LOGGER.warning("Error subscribing to pump notifications: %s", e)
 
     async def _poll_temperature(self):
         """Poll temperature at regular intervals."""
@@ -359,6 +358,7 @@ class VolcanoBTManager:
             if len(data) >= 2:
                 raw_16 = int.from_bytes(data[:2], byteorder="little", signed=False)
                 self.current_temperature = raw_16 / 10.0
+                _LOGGER.debug("Temperature read: %.1f°C", self.current_temperature)
             else:
                 self.current_temperature = None
                 _LOGGER.warning("Received incomplete temperature data: %s", data)
@@ -407,7 +407,7 @@ class VolcanoBTManager:
         payload = int(safe_temp * 10).to_bytes(2, byteorder="little")
         try:
             await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
-            _LOGGER.info("Heater temperature set to %s °C.", safe_temp)
+            _LOGGER.info("Heater temperature set to %.1f °C.", safe_temp)
         except BleakError as e:
             _LOGGER.error("Error writing heater temperature: %s", e)
 
@@ -422,7 +422,7 @@ class VolcanoBTManager:
             await self._client.write_gatt_char(UUID_LED_BRIGHTNESS, payload)
             self.led_brightness = clamped_brightness
             self._notify_sensors()
-            _LOGGER.info("LED Brightness set to %d", clamped_brightness)
+            _LOGGER.info("LED Brightness set to %d%%", clamped_brightness)
         except BleakError as e:
             _LOGGER.error("Error writing LED brightness: %s", e)
 
@@ -452,7 +452,7 @@ class VolcanoBTManager:
             _LOGGER.warning("Cannot set Auto Shutoff Setting - not connected.")
             return
 
-        # Optional: Clamp the range, e.g., 5..240 minutes
+        # Clamp the range if desired, e.g., 5..240 minutes
         # minutes = max(5, min(minutes, 240))
 
         total_seconds = minutes * 60
@@ -495,6 +495,12 @@ class VolcanoBTManager:
                 # Clear the vibration bit
                 new_control_value = control_value & (~VIBRATION_BIT_MASK)
                 _LOGGER.debug("Disabling vibration. New control value: 0x{0:08x}".format(new_control_value))
+
+            # **Important**: Ensure that other critical bits are not altered.
+            # If the device requires certain bits to remain set/cleared, handle them here.
+            # Example:
+            # critical_bits_mask = 0x00010000  # Example mask for critical bits
+            # new_control_value = (new_control_value & ~critical_bits_mask) | (control_value & critical_bits_mask)
 
             # Step 3: Convert back to bytes
             new_control_data = new_control_value.to_bytes(4, byteorder="little")
