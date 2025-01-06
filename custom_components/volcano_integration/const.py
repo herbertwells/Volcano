@@ -13,6 +13,7 @@ VIBRATION_BIT_MASK = 0x0400    # Bit 10
 
 # Control Register UUIDs
 UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
+REGISTER1_UUID = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications
 REGISTER2_UUID = "1010000d-5354-4f52-5a26-4249434b454c"          # [Specify Purpose]
 REGISTER3_UUID = "1010000e-5354-4f52-5a26-4249434b454c"          # Vibration Control
 
