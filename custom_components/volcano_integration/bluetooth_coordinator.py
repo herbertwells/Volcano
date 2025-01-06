@@ -5,6 +5,15 @@ import logging
 from bleak import BleakClient, BleakError
 
 from .const import (
+    DOMAIN,
+    BT_STATUS_DISCONNECTED,
+    BT_STATUS_CONNECTING,
+    BT_STATUS_CONNECTED,
+    BT_STATUS_ERROR,
+    VIBRATION_BIT_MASK,
+    REGISTER1_UUID,
+    REGISTER2_UUID,
+    REGISTER3_UUID,
     UUID_TEMP,
     UUID_PUMP_NOTIFICATIONS,
     UUID_PUMP_ON,
@@ -12,10 +21,6 @@ from .const import (
     UUID_HEAT_ON,
     UUID_HEAT_OFF,
     UUID_HEATER_SETPOINT,
-    BT_STATUS_DISCONNECTED,
-    BT_STATUS_CONNECTING,
-    BT_STATUS_CONNECTED,
-    BT_STATUS_ERROR,
     UUID_BLE_FIRMWARE_VERSION,
     UUID_SERIAL_NUMBER,
     UUID_FIRMWARE_VERSION,
@@ -25,12 +30,6 @@ from .const import (
     UUID_HOURS_OF_OPERATION,
     UUID_MINUTES_OF_OPERATION,
     UUID_VIBRATION,
-    REGISTER1_UUID,
-    REGISTER2_UUID,
-    REGISTER3_UUID,
-    VIBRATION_ON_MASK,
-    VIBRATION_OFF_MASK,
-    VIBRATION_BIT_MASK,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,12 +67,12 @@ class VolcanoBTManager:
         self.ble_firmware_version = None
         self.serial_number = None
         self.firmware_version = None
-        self.auto_shut_off = None             # "ON" or "OFF" (or "Enabled"/"Disabled")
-        self.auto_shut_off_setting = None     # Minutes (or possibly None)
+        self.auto_shut_off = None             # "ON" or "OFF"
+        self.auto_shut_off_setting = None     # Minutes
         self.led_brightness = None
         self.hours_of_operation = None
         self.minutes_of_operation = None
-        self.vibration = None  # "ON" or "OFF" once read
+        self.vibration = None  # "ON" or "OFF"
 
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
