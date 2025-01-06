@@ -11,7 +11,7 @@ from .const import (
     BT_STATUS_CONNECTED,
     BT_STATUS_ERROR,
     VIBRATION_BIT_MASK,
-    REGISTER1_UUID,
+    # REGISTER1_UUID,  # Removed duplicate to prevent conflicts
     REGISTER2_UUID,
     REGISTER3_UUID,
     UUID_TEMP,
@@ -60,7 +60,7 @@ class VolcanoBTManager:
         self._client = None
         self._connected = False
 
-        # Existing attributes
+        # Device Attributes
         self.current_temperature = None
         self.heat_state = None
         self.pump_state = None
@@ -88,7 +88,7 @@ class VolcanoBTManager:
 
     @bt_status.setter
     def bt_status(self, value):
-        """Set the Bluetooth status and notify sensors/buttons."""
+        """Set the Bluetooth status and notify sensors/entities."""
         if self._bt_status != value:
             _LOGGER.debug("BT status changed from %s to %s", self._bt_status, value)
             self._bt_status = value
@@ -152,9 +152,6 @@ class VolcanoBTManager:
 
     async def _connect(self):
         """Attempt to connect to the BLE device."""
-        from bleak import BleakClient, BleakError
-        import asyncio
-
         try:
             _LOGGER.info("Attempting to connect to Bluetooth device %s...", self.bt_address)
             self.bt_status = BT_STATUS_CONNECTING
@@ -433,7 +430,7 @@ class VolcanoBTManager:
     # NEW: set_auto_shutoff(enabled) -> writes 0x00 or 0x01 to the same UUID
     #
     async def set_auto_shutoff(self, enabled: bool):
-        """Enable/Disable Auto Shutoff by writing 0x01 (on) or 0x00 (off)."""
+        """Enable/Disable Auto Shutoff by writing 0x01 (ON) or 0x00 (OFF)."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set Auto Shutoff - not connected.")
             return
@@ -444,7 +441,7 @@ class VolcanoBTManager:
             self._notify_sensors()
             _LOGGER.info("Auto Shutoff set to %s", self.auto_shut_off)
         except BleakError as e:
-            _LOGGER.error("Error writing auto shutoff: %s", e)
+            _LOGGER.error("Error writing Auto Shutoff: %s", e)
 
     #
     # NEW: set_auto_shutoff_setting(minutes) -> writes 2-byte little-endian of (minutes*60)
@@ -455,7 +452,7 @@ class VolcanoBTManager:
             _LOGGER.warning("Cannot set Auto Shutoff Setting - not connected.")
             return
 
-        # You can clamp the range if desired, e.g. 5..240 minutes
+        # Optional: Clamp the range, e.g., 5..240 minutes
         # minutes = max(5, min(minutes, 240))
 
         total_seconds = minutes * 60
@@ -467,7 +464,7 @@ class VolcanoBTManager:
             self._notify_sensors()
             _LOGGER.info("Auto Shutoff Setting set to %d minutes", minutes)
         except BleakError as e:
-            _LOGGER.error("Error writing auto shutoff setting: %s", e)
+            _LOGGER.error("Error writing Auto Shutoff Setting: %s", e)
 
     async def set_vibration(self, enabled: bool):
         """Set vibration by modifying only the vibration bit in the control register."""
