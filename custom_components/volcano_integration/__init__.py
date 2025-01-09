@@ -76,23 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Forward setup to sensor, number, and switch platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Register Services
-    async def handle_connect(call):
-        """Handle the connect service."""
-        _LOGGER.debug("Service 'connect' called.")
-        if not manager._connected:
-            await manager.async_user_connect()
-        else:
-            _LOGGER.info("Already connected to the device.")
-
-    async def handle_disconnect(call):
-        """Handle the disconnect service."""
-        _LOGGER.debug("Service 'disconnect' called.")
-        if manager._connected:
-            await manager.async_user_disconnect()
-        else:
-            _LOGGER.info("Device already disconnected.")
-
+    # Register Services (optional if you still want services in addition to switches)
     async def handle_set_temperature(call):
         """Handle the set_temperature service."""
         temperature = call.data.get("temperature")
@@ -156,9 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             elapsed_time += 0.5
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    # Register each service with Home Assistant
-    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect)
-    hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
+    # Register each service with Home Assistant (optional)
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
@@ -175,9 +157,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN, SERVICE_SET_VIBRATION, handle_set_vibration, schema=SET_VIBRATION_SCHEMA
     )
 
-    # Start the Bluetooth manager
-    await manager.start()
-
     return True
 
 
@@ -190,8 +169,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         await manager.stop()
 
     # Unregister services
-    hass.services.async_remove(DOMAIN, SERVICE_CONNECT)
-    hass.services.async_remove(DOMAIN, SERVICE_DISCONNECT)
     hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
     hass.services.async_remove(DOMAIN, SERVICE_SET_LED_BRIGHTNESS)
     hass.services.async_remove(DOMAIN, SERVICE_SET_AUTO_SHUTOFF)
