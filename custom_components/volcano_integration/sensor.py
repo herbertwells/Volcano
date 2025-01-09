@@ -4,8 +4,18 @@ import logging
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory  # Imported EntityCategory
-
 from . import DOMAIN
+from .const import (
+    BT_STATUS_CONNECTED,
+    BT_STATUS_DISCONNECTED,
+    UUID_BLE_FIRMWARE_VERSION,
+    UUID_SERIAL_NUMBER,
+    UUID_FIRMWARE_VERSION,
+    UUID_AUTO_SHUT_OFF,
+    UUID_LED_BRIGHTNESS,
+    UUID_HOURS_OF_OPERATION,
+    UUID_MINUTES_OF_OPERATION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,13 +80,17 @@ class VolcanoCurrentTempSensor(VolcanoBaseSensor):
 
     @property
     def native_value(self):
-        val = self._manager.current_temperature
+        if self._manager.bt_status == BT_STATUS_CONNECTED:
+            val = self._manager.current_temperature
+        else:
+            val = 0.0  # Default temperature when disconnected
         _LOGGER.debug("%s: native_value -> %s °C", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available, shows default when disconnected
+        """Always available, shows default when disconnected."""
+        return True
 
 
 class VolcanoHeatStatusSensor(VolcanoBaseSensor):
@@ -98,13 +112,17 @@ class VolcanoHeatStatusSensor(VolcanoBaseSensor):
 
     @property
     def native_value(self):
-        val = self._manager.heat_state
+        if self._manager.bt_status == BT_STATUS_CONNECTED:
+            val = self._manager.heat_state
+        else:
+            val = "OFF"  # Default heat status when disconnected
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available, shows default when disconnected
+        """Always available, shows default when disconnected."""
+        return True
 
 
 class VolcanoPumpStatusSensor(VolcanoBaseSensor):
@@ -126,13 +144,17 @@ class VolcanoPumpStatusSensor(VolcanoBaseSensor):
 
     @property
     def native_value(self):
-        val = self._manager.pump_state
+        if self._manager.bt_status == BT_STATUS_CONNECTED:
+            val = self._manager.pump_state
+        else:
+            val = "OFF"  # Default pump status when disconnected
         _LOGGER.debug("%s: native_value -> %s", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available, shows default when disconnected
+        """Always available, shows default when disconnected."""
+        return True
 
 
 class VolcanoBTStatusSensor(VolcanoBaseSensor):
@@ -159,11 +181,11 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return True  # Always available
+        # Always show the BT Status sensor
+        return True
 
 
-# New Sensors with Default Values When Disconnected
-
+# New Sensor: BLE Firmware Version
 class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
     """Sensor to display the BLE Firmware Version."""
 
@@ -172,6 +194,7 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano BLE Firmware Version"
         self._attr_unique_id = f"volcano_ble_firmware_version_{self._manager.bt_address}"
         self._attr_icon = "mdi:information"
+        self._attr_device_class = None  # Generic sensor
         self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -187,15 +210,17 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
         if self._manager.bt_status == BT_STATUS_CONNECTED:
             val = self._manager.ble_firmware_version
         else:
-            val = "Not Connected"
+            val = "Not Connected"  # Default value when disconnected
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: Serial Number
 class VolcanoSerialNumberSensor(VolcanoBaseSensor):
     """Sensor to display the Serial Number."""
 
@@ -204,6 +229,7 @@ class VolcanoSerialNumberSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Serial Number"
         self._attr_unique_id = f"volcano_serial_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:card-account-details"
+        self._attr_device_class = None  # Generic sensor
         self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -219,15 +245,17 @@ class VolcanoSerialNumberSensor(VolcanoBaseSensor):
         if self._manager.bt_status == BT_STATUS_CONNECTED:
             val = self._manager.serial_number
         else:
-            val = "Not Connected"
+            val = "Not Connected"  # Default value when disconnected
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: Firmware Version
 class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
     """Sensor to display the Volcano Firmware Version."""
 
@@ -236,6 +264,7 @@ class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Firmware Version"
         self._attr_unique_id = f"volcano_firmware_version_{self._manager.bt_address}"
         self._attr_icon = "mdi:information-outline"
+        self._attr_device_class = None  # Generic sensor
         self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -251,15 +280,17 @@ class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
         if self._manager.bt_status == BT_STATUS_CONNECTED:
             val = self._manager.firmware_version
         else:
-            val = "Not Connected"
+            val = "Not Connected"  # Default value when disconnected
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: Auto Shutoff
 class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
     """Sensor to display the Auto Shutoff status."""
 
@@ -268,6 +299,7 @@ class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Auto Shutoff"
         self._attr_unique_id = f"volcano_auto_shutoff_{self._manager.bt_address}"
         self._attr_icon = "mdi:timer"
+        self._attr_device_class = None  # Generic sensor
         self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -283,15 +315,17 @@ class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
         if self._manager.bt_status == BT_STATUS_CONNECTED:
             val = self._manager.auto_shut_off
         else:
-            val = "Not Connected"
+            val = "OFF"  # Default value when disconnected
         _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: LED Brightness
 class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
     """Sensor to display the LED Brightness."""
 
@@ -300,6 +334,7 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano LED Brightness"
         self._attr_unique_id = f"volcano_led_brightness_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
+        self._attr_device_class = None  # Generic sensor
         self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
@@ -316,14 +351,16 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
             val = self._manager.led_brightness
         else:
             val = 100  # Default brightness when disconnected
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
+        _LOGGER.debug("%s: native_value -> '%s%%'", type(self).__name__, val)
         return val
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: Hours of Operation
 class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
     """Sensor to display the Hours of Operation."""
 
@@ -354,9 +391,11 @@ class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
 
 
+# New Sensor: Minutes of Operation
 class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
     """Sensor to display the Minutes of Operation."""
 
@@ -387,4 +426,5 @@ class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
 
     @property
     def available(self):
-        return True  # Always available
+        """Always available, shows default when disconnected."""
+        return True
