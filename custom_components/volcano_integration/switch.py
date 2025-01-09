@@ -25,8 +25,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         VolcanoAutoShutOffSwitch(manager, entry),
         VolcanoVibrationSwitch(manager, entry),
-        VolcanoHeatSwitch(manager, entry),  # New switch for Heat
-        VolcanoPumpSwitch(manager, entry),  # New switch for Pump
+        VolcanoHeatSwitch(manager, entry),      # Existing Heat switch
+        VolcanoPumpSwitch(manager, entry),      # Existing Pump switch
+        VolcanoConnectionSwitch(manager, entry),# New Connection switch
     ]
     async_add_entities(entities)
 
@@ -178,4 +179,33 @@ class VolcanoPumpSwitch(VolcanoBaseSwitch):
         _LOGGER.debug("Turning off Pump.")
         await self._manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
         self._manager.pump_state = "OFF"
+        self.async_write_ha_state()
+
+
+class VolcanoConnectionSwitch(VolcanoBaseSwitch):
+    """Switch to manage Bluetooth connection."""
+
+    def __init__(self, manager, config_entry):
+        """Initialize the Connection switch."""
+        super().__init__(manager, config_entry)
+        self._attr_name = "Volcano Connection"
+        self._attr_unique_id = f"volcano_connection_switch_{self._manager.bt_address}"
+        self._attr_icon = "mdi:bluetooth"
+        self._attr_entity_category = EntityCategory.CONFIG  # Categorized under Configuration
+
+    @property
+    def is_on(self):
+        """Return True if connected."""
+        return self._manager.bt_status == "CONNECTED"
+
+    async def async_turn_on(self, **kwargs):
+        """Connect to the vaporizer."""
+        _LOGGER.debug("Connecting to Volcano vaporizer.")
+        await self._manager.async_user_connect()
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs):
+        """Disconnect from the vaporizer."""
+        _LOGGER.debug("Disconnecting from Volcano vaporizer.")
+        await self._manager.async_user_disconnect()
         self.async_write_ha_state()
