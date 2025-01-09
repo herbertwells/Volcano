@@ -25,9 +25,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         VolcanoAutoShutOffSwitch(manager, entry),
         VolcanoVibrationSwitch(manager, entry),
-        VolcanoHeatSwitch(manager, entry),      # Existing Heat switch
-        VolcanoPumpSwitch(manager, entry),      # Existing Pump switch
-        VolcanoConnectionSwitch(manager, entry),# New Connection switch
+        VolcanoHeatSwitch(manager, entry),        # Existing Heat switch
+        VolcanoPumpSwitch(manager, entry),        # Existing Pump switch
+        VolcanoConnectionSwitch(manager, entry),  # New Connection switch
     ]
     async_add_entities(entities)
 
@@ -50,7 +50,10 @@ class VolcanoBaseSwitch(SwitchEntity):
 
     @property
     def available(self):
-        """Return True if Bluetooth is connected."""
+        """Return True if Bluetooth is connected or managing connection."""
+        # Connection switch is always available
+        if isinstance(self, VolcanoConnectionSwitch):
+            return True
         return self._manager.bt_status == "CONNECTED"
 
     async def async_added_to_hass(self):
@@ -196,16 +199,16 @@ class VolcanoConnectionSwitch(VolcanoBaseSwitch):
     @property
     def is_on(self):
         """Return True if connected."""
-        return self._manager.bt_status == "CONNECTED"
+        return self._manager.bt_status == BT_STATUS_CONNECTED
 
     async def async_turn_on(self, **kwargs):
         """Connect to the vaporizer."""
-        _LOGGER.debug("Connecting to Volcano vaporizer.")
+        _LOGGER.debug("Connecting to Volcano vaporizer via switch.")
         await self._manager.async_user_connect()
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Disconnect from the vaporizer."""
-        _LOGGER.debug("Disconnecting from Volcano vaporizer.")
+        _LOGGER.debug("Disconnecting from Volcano vaporizer via switch.")
         await self._manager.async_user_disconnect()
         self.async_write_ha_state()
