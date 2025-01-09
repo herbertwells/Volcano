@@ -18,7 +18,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor", "button", "number", "switch"]
+PLATFORMS = ["sensor", "number", "switch"]
 
 # Define service names
 SERVICE_CONNECT = "connect"
