@@ -50,7 +50,6 @@ VALID_PATTERNS = {
     (0x23, 0x36): ("ON", "ON (0x36)"),
 }
 
-
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
@@ -143,6 +142,8 @@ class VolcanoBTManager:
         """Main loop to manage Bluetooth connection."""
         _LOGGER.debug("Entering VolcanoBTManager._run() loop.")
         while not self._stop_event.is_set():
+            if not self._connected:
+                await self._connect()
             await asyncio.sleep(1)
         _LOGGER.debug("Exiting VolcanoBTManager._run() -> disconnecting.")
         await self._disconnect()
@@ -173,6 +174,7 @@ class VolcanoBTManager:
                 await self._read_minutes_of_operation()
                 await self._read_vibration()
                 await self._subscribe_pump_notifications()
+                await self._subscribe_heat_notifications()
 
                 # Start temperature polling
                 if not self._temp_poll_task or self._temp_poll_task.done():
@@ -254,15 +256,15 @@ class VolcanoBTManager:
             self.auto_shut_off = "Unknown"
 
     async def _read_auto_shut_off_setting(self):
-        """Read the Auto Shutoff Setting characteristic (2-byte: seconds)."""
+        """Read the Auto Shutoff Setting characteristic (2-byte: minutes)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read Auto Shutoff Setting - not connected.")
             return
         try:
             data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF_SETTING)
             if len(data) >= 2:
-                total_seconds = int.from_bytes(data[:2], byteorder="little")
-                self.auto_shut_off_setting = total_seconds // 60
+                total_minutes = int.from_bytes(data[:2], byteorder="little")
+                self.auto_shut_off_setting = total_minutes
                 _LOGGER.info("Auto Shutoff Setting: %d minutes", self.auto_shut_off_setting)
             else:
                 self.auto_shut_off_setting = 60  # Default to 60 minutes
@@ -375,6 +377,28 @@ class VolcanoBTManager:
             _LOGGER.info("Subscribed to pump notifications.")
         except BleakError as e:
             _LOGGER.warning("Error subscribing to pump notifications: %s", e)
+
+    async def _subscribe_heat_notifications(self):
+        """Subscribe to heat notifications."""
+        if not self._connected:
+            return
+
+        def notification_handler(sender, data):
+            _LOGGER.debug("Received heat notification from %s: %s", sender, data)
+            if len(data) >= 2:
+                b1, b2 = data[0], data[1]
+                if (b1, b2) in VALID_PATTERNS:
+                    self.heat_state, self.pump_state = VALID_PATTERNS[(b1, b2)]
+                else:
+                    self.heat_state = f"0x{b1:02X}"
+                    self.pump_state = f"0x{b2:02X}"
+            self._notify_sensors()
+
+        try:
+            await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
+            _LOGGER.info("Subscribed to heat notifications.")
+        except BleakError as e:
+            _LOGGER.warning("Error subscribing to heat notifications: %s", e)
 
     async def _poll_temperature(self):
         """Poll temperature at regular intervals."""
@@ -490,7 +514,7 @@ class VolcanoBTManager:
             _LOGGER.error("Error writing Auto Shutoff: %s", e)
 
     async def set_auto_shutoff_setting(self, minutes: int):
-        """Write the Auto Shutoff Setting in minutes (converted to seconds)."""
+        """Write the Auto Shutoff Setting in minutes."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set Auto Shutoff Setting - not connected.")
             return
@@ -498,8 +522,7 @@ class VolcanoBTManager:
         # Clamp the range if desired, e.g., 30..360 minutes
         minutes = max(30, min(minutes, 360))
 
-        total_seconds = minutes * 60
-        payload = total_seconds.to_bytes(2, byteorder="little")
+        payload = minutes.to_bytes(2, byteorder="little")
 
         try:
             await self._client.write_gatt_char(UUID_AUTO_SHUT_OFF_SETTING, payload)
