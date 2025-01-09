@@ -18,7 +18,8 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 - **Bluetooth Status**: View the current Bluetooth connection status (Connected, Disconnected, etc.).
 - **Firmware and Serial Information**: Access BLE firmware version, device firmware version, and serial number.
 - **Operational Hours Monitoring**: Track hours and minutes of operation.
-- **Full Automation Support**: Automate heat, pump, vibration, LED brightness, and auto shutoff settings using Home Assistant scripts or automations.
+- **Connection Control**: Manage Bluetooth connection via a dedicated switch.
+- **Full Automation Support**: Automate heat, pump, vibration, LED brightness, auto shutoff, and connection settings using Home Assistant scripts or automations.
 - **User-Friendly Services**: Use built-in Home Assistant services to control various aspects of the vaporizer.
 
 ---
@@ -94,6 +95,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
   - **Pump**: Turns the pump **ON** or **OFF**.
   - **Auto Shutoff**: Enables or disables the auto shutoff feature.
   - **Vibration**: Enables or disables the vibration feature.
+  - **Connection**: Connects or disconnects the vaporizer from Home Assistant.
 
 - **Numbers**:
   - **Heater Temperature Setpoint**: Allows setting the desired temperature between 40°C and 230°C.
@@ -121,6 +123,3 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 - `volcano_integration.set_vibration`: Enable or disable vibration.
   - **Parameters**:
     - `enabled` (required): Set to true to enable vibration, false to disable.
-
----
-
