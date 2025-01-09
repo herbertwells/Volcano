@@ -10,10 +10,16 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
 
 - **Temperature Control**: Set the heater temperature between 40°C and 230°C with 1°C precision.
 - **Pump Control**: Turn the pump **ON** or **OFF** to start or stop air circulation.
+- **Heat Control**: Turn the heater **ON** or **OFF**.
+- **Vibration Control**: Enable or disable the vibration feature.
+- **LED Brightness Control**: Adjust the LED brightness between 0% and 100%.
+- **Auto Shutoff Control**: Enable/disable auto shutoff and set the shutoff duration.
 - **Real-Time Temperature Monitoring**: Monitor the current heater temperature in real-time.
 - **Bluetooth Status**: View the current Bluetooth connection status (Connected, Disconnected, etc.).
-- **Full Automation Support**: Automate heat, pump, and temperature settings using Home Assistant scripts or automations.
-- **User-Friendly Services**: Use built-in Home Assistant services to control the vaporizer.
+- **Firmware and Serial Information**: Access BLE firmware version, device firmware version, and serial number.
+- **Operational Hours Monitoring**: Track hours and minutes of operation.
+- **Full Automation Support**: Automate heat, pump, vibration, LED brightness, and auto shutoff settings using Home Assistant scripts or automations.
+- **User-Friendly Services**: Use built-in Home Assistant services to control various aspects of the vaporizer.
 
 ---
 
@@ -45,7 +51,7 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
    - After installation, restart Home Assistant to activate the integration.
 
 5. **Configure the Integration**:
-   - Navigate to **Settings > Devices & Services**, find **Volcano Integration**, and follow the setup instructions. The configuration menu will scan for Bluetooth devices, dsiplaying a list. Simply select your Volcano Vaporizer and the setup will complete.
+   - Navigate to **Settings > Devices & Services**, find **Volcano Integration**, and follow the setup instructions. The configuration menu will scan for Bluetooth devices, displaying a list. Simply select your Volcano Vaporizer and the setup will complete.
 
 ### Manual Installation
 
@@ -75,22 +81,46 @@ A custom Home Assistant integration to connect and control the **Storz & Bickel 
   - **Heat Status**: Shows whether the heater is **ON**, **OFF**, or in an unknown state.
   - **Pump Status**: Indicates if the pump is **ON**, **OFF**, or in an unknown state.
   - **Bluetooth Status**: Displays the current Bluetooth connection status.
+  - **BLE Firmware Version**: Shows the BLE firmware version of the device.
+  - **Serial Number**: Displays the device's serial number.
+  - **Firmware Version**: Shows the device's firmware version.
+  - **Auto Shutoff**: Indicates whether auto shutoff is enabled.
+  - **LED Brightness**: Displays the current LED brightness level.
+  - **Hours of Operation**: Tracks the total hours the device has been in operation.
+  - **Minutes of Operation**: Tracks the total minutes the device has been in operation.
 
-- **Buttons**:
-  - **Connect**: Establishes a Bluetooth connection with the vaporizer.
-  - **Disconnect**: Ends the Bluetooth connection.
-  - **Pump On/Off**: Turns the pump **ON** or **OFF**.
-  - **Heat On/Off**: Turns the heater **ON** or **OFF**.
+- **Switches**:
+  - **Heat**: Turns the heater **ON** or **OFF**.
+  - **Pump**: Turns the pump **ON** or **OFF**.
+  - **Auto Shutoff**: Enables or disables the auto shutoff feature.
+  - **Vibration**: Enables or disables the vibration feature.
 
-- **Number Control**:
+- **Numbers**:
   - **Heater Temperature Setpoint**: Allows setting the desired temperature between 40°C and 230°C.
+  - **LED Brightness**: Adjusts the LED brightness between 0% and 100%.
+  - **Auto Shutoff Setting**: Sets the auto shutoff duration in minutes (30-360).
 
 ### Services
 
 - `volcano_integration.connect`: Connect to the vaporizer.
 - `volcano_integration.disconnect`: Disconnect from the vaporizer.
-- `volcano_integration.pump_on`: Turn the pump **ON**.
-- `volcano_integration.pump_off`: Turn the pump **OFF**.
-- `volcano_integration.heat_on`: Turn the heater **ON**.
-- `volcano_integration.heat_off`: Turn the heater **OFF**.
 - `volcano_integration.set_temperature`: Set the heater temperature.
+  - **Parameters**:
+    - `temperature` (optional): The target temperature in °C (40-230).
+    - `percentage` (optional): The target temperature as a percentage (0-100%).
+    - `wait_until_reached` (optional, default: true): Whether to block until the target temperature is reached.
+- `volcano_integration.set_led_brightness`: Set the LED brightness.
+  - **Parameters**:
+    - `brightness` (required): The LED brightness percentage (0-100%).
+- `volcano_integration.set_auto_shutoff`: Enable or disable auto shutoff.
+  - **Parameters**:
+    - `enabled` (required): Set to true to enable auto shutoff, false to disable.
+- `volcano_integration.set_auto_shutoff_setting`: Set the auto shutoff time in minutes.
+  - **Parameters**:
+    - `minutes` (required): The duration in minutes before auto shutoff is triggered (30-360).
+- `volcano_integration.set_vibration`: Enable or disable vibration.
+  - **Parameters**:
+    - `enabled` (required): Set to true to enable vibration, false to disable.
+
+---
+
