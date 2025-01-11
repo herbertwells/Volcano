@@ -1,5 +1,6 @@
 """Platform for switch integration."""
 import logging
+import asyncio
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import EntityCategory
