@@ -231,15 +231,23 @@ class VolcanoHeatSwitch(SwitchEntity):
         """Turn the heater on."""
         _LOGGER.debug("Turning heater ON.")
         await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
-        self._attr_is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn the heater off."""
         _LOGGER.debug("Turning heater OFF.")
         await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
-        self._attr_is_on = False
         self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register for state updates."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister from manager."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
 
 
 class VolcanoPumpSwitch(SwitchEntity):
@@ -276,12 +284,20 @@ class VolcanoPumpSwitch(SwitchEntity):
         """Turn the pump on."""
         _LOGGER.debug("Turning pump ON.")
         await self._manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
-        self._attr_is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn the pump off."""
         _LOGGER.debug("Turning pump OFF.")
         await self._manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
-        self._attr_is_on = False
         self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register for state updates."""
+        _LOGGER.debug("%s added to Home Assistant.", self._attr_name)
+        self._manager.register_sensor(self)
+
+    async def async_will_remove_from_hass(self):
+        """Unregister from manager."""
+        _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
+        self._manager.unregister_sensor(self)
