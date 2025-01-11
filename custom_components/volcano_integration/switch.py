@@ -231,12 +231,16 @@ class VolcanoHeatSwitch(SwitchEntity):
         """Turn the heater on."""
         _LOGGER.debug("Turning heater ON.")
         await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
+        await asyncio.sleep(0.5)  # Allow time for the device to process
+        await self._manager._read_heater_state()  # Ensure state sync
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn the heater off."""
         _LOGGER.debug("Turning heater OFF.")
         await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
+        await asyncio.sleep(0.5)  # Allow time for the device to process
+        await self._manager._read_heater_state()  # Ensure state sync
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
