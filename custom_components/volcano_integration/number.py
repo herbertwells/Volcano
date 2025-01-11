@@ -7,6 +7,10 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory  # For Diagnostics
 from . import DOMAIN
+from .const import (
+    BT_STATUS_CONNECTED,
+    BT_STATUS_DISCONNECTED,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
