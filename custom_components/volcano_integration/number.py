@@ -7,10 +7,6 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory  # For Diagnostics
 from . import DOMAIN
-from .const import (
-    BT_STATUS_CONNECTED,
-    BT_STATUS_DISCONNECTED,
-)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,14 +15,6 @@ MAX_TEMP = 230.0
 DEFAULT_TEMP = 170.0
 STEP = 1.0  # 1 °C increments
 
-MIN_AUTO_SHUTOFF = 30
-MAX_AUTO_SHUTOFF = 360
-DEFAULT_AUTO_SHUTOFF = 60
-STEP_AUTO_SHUTOFF = 1
-
-MIN_LED_BRIGHTNESS = 0
-MAX_LED_BRIGHTNESS = 100
-STEP_LED_BRIGHTNESS = 1
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano number entities for a config entry."""
@@ -58,7 +46,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": self._manager.firmware_version or "1.0.0",
+            "sw_version": "1.0.0",
             "via_device": None,
         }
 
@@ -67,7 +55,7 @@ class VolcanoHeaterTempNumber(NumberEntity):
         self._attr_native_step = STEP
         self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-        self._temp_value = self._manager.current_temperature if self._manager.bt_status == BT_STATUS_CONNECTED else DEFAULT_TEMP
+        self._temp_value = DEFAULT_TEMP
 
     @property
     def native_value(self):
@@ -75,7 +63,8 @@ class VolcanoHeaterTempNumber(NumberEntity):
 
     @property
     def available(self):
-        return True  # Always available
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
         clamped_val = max(MIN_TEMP, min(value, MAX_TEMP))
@@ -106,36 +95,38 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         super().__init__()
         self._manager = manager
         self._config_entry = config_entry
-        self._attr_name = "Volcano LED Brightness"
+        self._attr_name = "Volcano LED Brightness (Writer)"
         self._attr_unique_id = f"volcano_led_brightness_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": self._manager.firmware_version or "1.0.0",
+            "sw_version": "1.0.0",
             "via_device": None,
         }
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         # LED Brightness range 0–100
-        self._attr_native_min_value = MIN_LED_BRIGHTNESS
-        self._attr_native_max_value = MAX_LED_BRIGHTNESS
-        self._attr_native_step = STEP_LED_BRIGHTNESS
+        self._attr_native_min_value = 0
+        self._attr_native_max_value = 100
+        self._attr_native_step = 1
         self._attr_unit_of_measurement = "%"
 
     @property
     def native_value(self):
-        if self._manager.bt_status == BT_STATUS_CONNECTED:
+        # Return the current brightness stored by the manager
+        if self._manager.led_brightness is not None:
             return self._manager.led_brightness
-        return MAX_LED_BRIGHTNESS  # Default brightness when disconnected
+        return 0
 
     @property
     def available(self):
-        return True  # Always available
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
-        brightness_int = int(max(MIN_LED_BRIGHTNESS, min(value, MAX_LED_BRIGHTNESS)))
+        brightness_int = int(max(0, min(value, 100)))
         _LOGGER.debug(
             "User set LED Brightness to %.1f -> clamped=%d",
             value,
@@ -155,6 +146,9 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         self._manager.unregister_sensor(self)
 
 
+#
+# NEW: VolcanoAutoShutOffMinutesNumber
+#
 class VolcanoAutoShutOffMinutesNumber(NumberEntity):
     """Number entity for setting the Volcano's Auto Shutoff Setting (in minutes)."""
 
@@ -165,32 +159,38 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
         self._attr_name = "Volcano Auto Shutoff Setting"
         self._attr_unique_id = f"volcano_auto_shutoff_minutes_{self._manager.bt_address}"
         self._attr_icon = "mdi:timer-cog"
+        self._attr_native_min_value = 30
+        self._attr_native_max_value = 360
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
             "manufacturer": "Storz & Bickel",
             "model": "Volcano Hybrid Vaporizer",
-            "sw_version": self._manager.firmware_version or "1.0.0",
+            "sw_version": "1.0.0",
             "via_device": None,
         }
-        # Auto Shutoff Setting range: 30–360 minutes
-        self._attr_native_min_value = MIN_AUTO_SHUTOFF
-        self._attr_native_max_value = MAX_AUTO_SHUTOFF
-        self._attr_native_step = STEP_AUTO_SHUTOFF
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        # Updated range: 30–360 minutes
+        self._attr_native_min_value = 30
+        self._attr_native_max_value = 360
+        self._attr_native_step = 1
         self._attr_unit_of_measurement = "min"
 
     @property
     def native_value(self):
-        if self._manager.bt_status == BT_STATUS_CONNECTED:
+        """Return the current auto shutoff minutes from the manager."""
+        if self._manager.auto_shut_off_setting is not None:
             return self._manager.auto_shut_off_setting
-        return DEFAULT_AUTO_SHUTOFF  # Default setting when disconnected
+        return 0
 
     @property
     def available(self):
-        return True  # Always available
+        """Available only when Bluetooth is connected."""
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_set_native_value(self, value: float) -> None:
-        minutes = int(max(MIN_AUTO_SHUTOFF, min(value, MAX_AUTO_SHUTOFF)))
+        """Write the new auto shutoff time in minutes to the device."""
+        minutes = int(value)
         _LOGGER.debug("User set Auto Shutoff to %d minutes", minutes)
         await self._manager.set_auto_shutoff_setting(minutes)
         self.async_write_ha_state()
