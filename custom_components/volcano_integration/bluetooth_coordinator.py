@@ -61,18 +61,18 @@ class VolcanoBTManager:
         self._connected = False
 
         # Device Attributes
-        self.current_temperature = 0.0
-        self.heat_state = "OFF"
-        self.pump_state = "OFF"
-        self.ble_firmware_version = "Unknown"
-        self.serial_number = "Unknown"
-        self.firmware_version = "Unknown"
-        self.auto_shut_off = "OFF"             # "ON" or "OFF"
-        self.auto_shut_off_setting = 60        # Minutes
-        self.led_brightness = 100
-        self.hours_of_operation = 0
-        self.minutes_of_operation = 0
-        self.vibration = "OFF"  # "ON" or "OFF"
+        self.current_temperature = None
+        self.heat_state = None
+        self.pump_state = None
+        self.ble_firmware_version = None
+        self.serial_number = None
+        self.firmware_version = None
+        self.auto_shut_off = None             # "ON" or "OFF"
+        self.auto_shut_off_setting = None     # Minutes
+        self.led_brightness = None
+        self.hours_of_operation = None
+        self.minutes_of_operation = None
+        self.vibration = None  # "ON" or "OFF"
 
         self._bt_status = BT_STATUS_DISCONNECTED
         self._run_task = None
@@ -104,10 +104,11 @@ class VolcanoBTManager:
             self._sensors.remove(sensor_entity)
 
     async def start(self):
-        """Start the Bluetooth manager without connecting."""
+        """Start the Bluetooth manager."""
         if not self._run_task or self._run_task.done():
             self._stop_event.clear()
             self._run_task = asyncio.create_task(self._run())
+            self._temp_poll_task = asyncio.create_task(self._poll_temperature())
 
     async def stop(self):
         """Stop the Bluetooth manager."""
@@ -120,7 +121,7 @@ class VolcanoBTManager:
                 await self._temp_poll_task
             except asyncio.CancelledError:
                 pass
-        await self._disconnect()
+        self.bt_status = BT_STATUS_DISCONNECTED
 
     async def async_user_connect(self):
         """Explicitly initiate a connection to the BLE device."""
@@ -128,7 +129,7 @@ class VolcanoBTManager:
         if self._connected:
             _LOGGER.info("Already connected to the device.")
             return
-        await self._connect()
+        await self.start()
 
     async def async_user_disconnect(self):
         """Explicitly disconnect from the BLE device."""
@@ -136,7 +137,7 @@ class VolcanoBTManager:
         if not self._connected:
             _LOGGER.info("Already disconnected from the device.")
             return
-        await self._disconnect()
+        await self.stop()
 
     async def _run(self):
         """Main loop to manage Bluetooth connection."""
@@ -174,11 +175,6 @@ class VolcanoBTManager:
                 await self._read_minutes_of_operation()
                 await self._read_vibration()
                 await self._subscribe_pump_notifications()
-                await self._subscribe_heat_notifications()
-
-                # Start temperature polling
-                if not self._temp_poll_task or self._temp_poll_task.done():
-                    self._temp_poll_task = asyncio.create_task(self._poll_temperature())
 
             else:
                 self.bt_status = BT_STATUS_DISCONNECTED
@@ -208,7 +204,7 @@ class VolcanoBTManager:
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading BLE Firmware Version: %s", e)
-            self.ble_firmware_version = "Unknown"
+            self.ble_firmware_version = None
 
     async def _read_serial_number(self):
         """Read the Serial Number characteristic."""
@@ -222,7 +218,7 @@ class VolcanoBTManager:
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Serial Number: %s", e)
-            self.serial_number = "Unknown"
+            self.serial_number = None
 
     async def _read_firmware_version(self):
         """Read the Volcano Firmware Version characteristic."""
@@ -236,7 +232,7 @@ class VolcanoBTManager:
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Firmware Version: %s", e)
-            self.firmware_version = "Unknown"
+            self.firmware_version = None
 
     async def _read_auto_shut_off(self):
         """Read the Auto Shutoff characteristic (0x00=OFF, 0x01=ON)."""
@@ -248,30 +244,30 @@ class VolcanoBTManager:
             if data:
                 self.auto_shut_off = "ON" if data[0] == 1 else "OFF"
             else:
-                self.auto_shut_off = "OFF"
+                self.auto_shut_off = None
             _LOGGER.info("Auto Shutoff: %s", self.auto_shut_off)
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Auto Shutoff: %s", e)
-            self.auto_shut_off = "Unknown"
+            self.auto_shut_off = None
 
     async def _read_auto_shut_off_setting(self):
-        """Read the Auto Shutoff Setting characteristic (2-byte: minutes)."""
+        """Read the Auto Shutoff Setting characteristic (2-byte: seconds)."""
         if not self._connected or not self._client:
             _LOGGER.error("Cannot read Auto Shutoff Setting - not connected.")
             return
         try:
             data = await self._client.read_gatt_char(UUID_AUTO_SHUT_OFF_SETTING)
             if len(data) >= 2:
-                total_minutes = int.from_bytes(data[:2], byteorder="little")
-                self.auto_shut_off_setting = total_minutes
+                total_seconds = int.from_bytes(data[:2], byteorder="little")
+                self.auto_shut_off_setting = total_seconds // 60
                 _LOGGER.info("Auto Shutoff Setting: %d minutes", self.auto_shut_off_setting)
             else:
-                self.auto_shut_off_setting = 60  # Default to 60 minutes
+                self.auto_shut_off_setting = None
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Auto Shutoff Setting: %s", e)
-            self.auto_shut_off_setting = 60  # Default to 60 minutes
+            self.auto_shut_off_setting = None
 
     async def _read_led_brightness(self):
         """Read the LED Brightness characteristic (0–100)."""
@@ -283,12 +279,12 @@ class VolcanoBTManager:
             if data:
                 self.led_brightness = data[0]
             else:
-                self.led_brightness = 100  # Default to 100%
+                self.led_brightness = None
             _LOGGER.info("LED Brightness: %s%%", self.led_brightness)
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading LED Brightness: %s", e)
-            self.led_brightness = 100  # Default to 100%
+            self.led_brightness = None
 
     async def _read_hours_of_operation(self):
         """Read the Hours of Operation characteristic."""
@@ -300,12 +296,12 @@ class VolcanoBTManager:
             if len(data) >= 2:
                 self.hours_of_operation = int.from_bytes(data[:2], byteorder="little")
             else:
-                self.hours_of_operation = 0
+                self.hours_of_operation = None
             _LOGGER.info("Hours of Operation: %s hours", self.hours_of_operation)
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Hours of Operation: %s", e)
-            self.hours_of_operation = 0
+            self.hours_of_operation = None
 
     async def _read_minutes_of_operation(self):
         """Read the Minutes of Operation characteristic."""
@@ -317,44 +313,12 @@ class VolcanoBTManager:
             if len(data) >= 2:
                 self.minutes_of_operation = int.from_bytes(data[:2], byteorder="little")
             else:
-                self.minutes_of_operation = 0
+                self.minutes_of_operation = None
             _LOGGER.info("Minutes of Operation: %s minutes", self.minutes_of_operation)
             self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error reading Minutes of Operation: %s", e)
-            self.minutes_of_operation = 0
-
-    async def _read_vibration(self):
-        """Read the vibration state from the control register."""
-        if not self._connected or not self._client:
-            _LOGGER.error("Cannot read vibration - not connected.")
-            return
-        try:
-            # Read the control register
-            control_data = await self._client.read_gatt_char(REGISTER3_UUID)
-            _LOGGER.debug("Vibration read raw data: %s (len=%d)", control_data.hex(), len(control_data))
-
-            # Ensure we have enough data (4 bytes)
-            if len(control_data) < 4:
-                _LOGGER.warning("Received incomplete control register data for vibration: %s", control_data.hex())
-                self.vibration = "Unknown"
-            else:
-                # Convert bytes to integer (little-endian)
-                control_value = int.from_bytes(control_data[:4], byteorder="little")
-                _LOGGER.debug("Control register as integer: 0x{0:08x}".format(control_value))
-
-                # Check if vibration bit is set
-                if control_value & VIBRATION_BIT_MASK:
-                    self.vibration = "ON"
-                else:
-                    self.vibration = "OFF"
-
-            _LOGGER.info("Vibration (read): %s", self.vibration)
-            self._notify_sensors()
-
-        except BleakError as e:
-            _LOGGER.error("Error reading vibration: %s", e)
-            self.vibration = "Unknown"
+            self.minutes_of_operation = None
 
     async def _subscribe_pump_notifications(self):
         """Subscribe to pump notifications."""
@@ -378,32 +342,11 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.warning("Error subscribing to pump notifications: %s", e)
 
-    async def _subscribe_heat_notifications(self):
-        """Subscribe to heat notifications."""
-        if not self._connected:
-            return
-
-        def notification_handler(sender, data):
-            _LOGGER.debug("Received heat notification from %s: %s", sender, data)
-            if len(data) >= 2:
-                b1, b2 = data[0], data[1]
-                if (b1, b2) in VALID_PATTERNS:
-                    self.heat_state, self.pump_state = VALID_PATTERNS[(b1, b2)]
-                else:
-                    self.heat_state = f"0x{b1:02X}"
-                    self.pump_state = f"0x{b2:02X}"
-            self._notify_sensors()
-
-        try:
-            await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
-            _LOGGER.info("Subscribed to heat notifications.")
-        except BleakError as e:
-            _LOGGER.warning("Error subscribing to heat notifications: %s", e)
-
     async def _poll_temperature(self):
         """Poll temperature at regular intervals."""
-        while not self._stop_event.is_set() and self._connected:
-            await self._read_temperature()
+        while not self._stop_event.is_set():
+            if self._connected:
+                await self._read_temperature()
             await asyncio.sleep(TEMP_POLL_INTERVAL)
 
     async def _read_temperature(self):
@@ -417,7 +360,7 @@ class VolcanoBTManager:
                 self.current_temperature = raw_16 / 10.0
                 _LOGGER.debug("Temperature read: %.1f°C", self.current_temperature)
             else:
-                self.current_temperature = 0.0
+                self.current_temperature = None
                 _LOGGER.warning("Received incomplete temperature data: %s", data)
             self._notify_sensors()
         except BleakError as e:
@@ -443,20 +386,6 @@ class VolcanoBTManager:
         self._client = None
         self._connected = False
         self.bt_status = BT_STATUS_DISCONNECTED
-        # Reset device attributes to default values
-        self.current_temperature = 0.0
-        self.heat_state = "OFF"
-        self.pump_state = "OFF"
-        self.ble_firmware_version = "Unknown"
-        self.serial_number = "Unknown"
-        self.firmware_version = "Unknown"
-        self.auto_shut_off = "OFF"
-        self.auto_shut_off_setting = 60
-        self.led_brightness = 100
-        self.hours_of_operation = 0
-        self.minutes_of_operation = 0
-        self.vibration = "OFF"
-        self._notify_sensors()
 
     async def write_gatt_command(self, write_uuid: str, payload: bytes = b""):
         """Write a payload to a GATT characteristic."""
@@ -478,9 +407,7 @@ class VolcanoBTManager:
         payload = int(safe_temp * 10).to_bytes(2, byteorder="little")
         try:
             await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
-            self.current_temperature = safe_temp  # Optimistically set
             _LOGGER.info("Heater temperature set to %.1f °C.", safe_temp)
-            self._notify_sensors()
         except BleakError as e:
             _LOGGER.error("Error writing heater temperature: %s", e)
 
@@ -499,6 +426,9 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error writing LED brightness: %s", e)
 
+    #
+    # NEW: set_auto_shutoff(enabled) -> writes 0x00 or 0x01 to the same UUID
+    #
     async def set_auto_shutoff(self, enabled: bool):
         """Enable/Disable Auto Shutoff by writing 0x01 (ON) or 0x00 (OFF)."""
         if not self._connected or not self._client:
@@ -513,16 +443,20 @@ class VolcanoBTManager:
         except BleakError as e:
             _LOGGER.error("Error writing Auto Shutoff: %s", e)
 
+    #
+    # NEW: set_auto_shutoff_setting(minutes) -> writes 2-byte little-endian of (minutes*60)
+    #
     async def set_auto_shutoff_setting(self, minutes: int):
-        """Write the Auto Shutoff Setting in minutes."""
+        """Write the Auto Shutoff Setting in minutes (converted to seconds)."""
         if not self._connected or not self._client:
             _LOGGER.warning("Cannot set Auto Shutoff Setting - not connected.")
             return
 
-        # Clamp the range if desired, e.g., 30..360 minutes
-        minutes = max(30, min(minutes, 360))
+        # Clamp the range if desired, e.g., 5..240 minutes
+        # minutes = max(5, min(minutes, 240))
 
-        payload = minutes.to_bytes(2, byteorder="little")
+        total_seconds = minutes * 60
+        payload = total_seconds.to_bytes(2, byteorder="little")
 
         try:
             await self._client.write_gatt_char(UUID_AUTO_SHUT_OFF_SETTING, payload)
@@ -586,3 +520,35 @@ class VolcanoBTManager:
 
         except BleakError as e:
             _LOGGER.error("Error setting vibration: %s", e)
+
+    async def _read_vibration(self):
+        """Read the vibration state from the control register."""
+        if not self._connected or not self._client:
+            _LOGGER.error("Cannot read vibration - not connected.")
+            return
+        try:
+            # Read the control register
+            control_data = await self._client.read_gatt_char(REGISTER3_UUID)
+            _LOGGER.debug("Vibration read raw data: %s (len=%d)", control_data.hex(), len(control_data))
+
+            # Ensure we have enough data (4 bytes)
+            if len(control_data) < 4:
+                _LOGGER.warning("Received incomplete control register data for vibration: %s", control_data.hex())
+                self.vibration = None
+            else:
+                # Convert bytes to integer (little-endian)
+                control_value = int.from_bytes(control_data[:4], byteorder="little")
+                _LOGGER.debug("Control register as integer: 0x{0:08x}".format(control_value))
+
+                # Check if vibration bit is set
+                if control_value & VIBRATION_BIT_MASK:
+                    self.vibration = "ON"
+                else:
+                    self.vibration = "OFF"
+
+            _LOGGER.info("Vibration (read): %s", self.vibration)
+            self._notify_sensors()
+
+        except BleakError as e:
+            _LOGGER.error("Error reading vibration: %s", e)
+            self.vibration = None
