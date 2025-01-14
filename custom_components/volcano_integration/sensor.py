@@ -3,7 +3,7 @@ import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.const import UnitOfTemperature
-from homeassistant.helpers.entity import EntityCategory  # Imported EntityCategory
+from homeassistant.helpers.entity import EntityCategory
 
 from . import DOMAIN
 
@@ -16,18 +16,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     manager = hass.data[DOMAIN][entry.entry_id]
 
+    # Removed VolcanoAutoShutOffSensor from this list.
     entities = [
         VolcanoCurrentTempSensor(manager, entry),
         VolcanoHeatStatusSensor(manager, entry),
         VolcanoPumpStatusSensor(manager, entry),
         VolcanoBTStatusSensor(manager, entry),
-        VolcanoBLEFirmwareVersionSensor(manager, entry),        # New Sensor
-        VolcanoSerialNumberSensor(manager, entry),               # New Sensor
-        VolcanoFirmwareVersionSensor(manager, entry),            # New Sensor
-        VolcanoAutoShutOffSensor(manager, entry),                # New Sensor
-        VolcanoLEDBrightnessSensor(manager, entry),              # New Sensor
-        VolcanoHoursOfOperationSensor(manager, entry),           # New Sensor
-        VolcanoMinutesOfOperationSensor(manager, entry),         # New Sensor
+        VolcanoBLEFirmwareVersionSensor(manager, entry),
+        VolcanoSerialNumberSensor(manager, entry),
+        VolcanoFirmwareVersionSensor(manager, entry),
+        # VolcanoAutoShutOffSensor(manager, entry),  <-- REMOVED
+        VolcanoLEDBrightnessSensor(manager, entry),
+        VolcanoHoursOfOperationSensor(manager, entry),
+        VolcanoMinutesOfOperationSensor(manager, entry),
     ]
     async_add_entities(entities)
 
@@ -163,7 +164,6 @@ class VolcanoBTStatusSensor(VolcanoBaseSensor):
         return True
 
 
-# New Sensor: BLE Firmware Version
 class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
     """Sensor to display the BLE Firmware Version."""
 
@@ -172,8 +172,8 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano BLE Firmware Version"
         self._attr_unique_id = f"volcano_ble_firmware_version_{self._manager.bt_address}"
         self._attr_icon = "mdi:information"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -194,7 +194,6 @@ class VolcanoBLEFirmwareVersionSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED" and self._manager.ble_firmware_version is not None)
 
 
-# New Sensor: Serial Number
 class VolcanoSerialNumberSensor(VolcanoBaseSensor):
     """Sensor to display the Serial Number."""
 
@@ -203,8 +202,8 @@ class VolcanoSerialNumberSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Serial Number"
         self._attr_unique_id = f"volcano_serial_number_{self._manager.bt_address}"
         self._attr_icon = "mdi:card-account-details"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -225,7 +224,6 @@ class VolcanoSerialNumberSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED" and self._manager.serial_number is not None)
 
 
-# New Sensor: Firmware Version
 class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
     """Sensor to display the Volcano Firmware Version."""
 
@@ -234,8 +232,8 @@ class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Firmware Version"
         self._attr_unique_id = f"volcano_firmware_version_{self._manager.bt_address}"
         self._attr_icon = "mdi:information-outline"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -256,38 +254,9 @@ class VolcanoFirmwareVersionSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED" and self._manager.firmware_version is not None)
 
 
-# New Sensor: Auto Shutoff
-class VolcanoAutoShutOffSensor(VolcanoBaseSensor):
-    """Sensor to display the Auto Shutoff status."""
-
-    def __init__(self, manager, config_entry):
-        super().__init__(manager, config_entry)
-        self._attr_name = "Volcano Auto Shutoff"
-        self._attr_unique_id = f"volcano_auto_shutoff_{self._manager.bt_address}"
-        self._attr_icon = "mdi:timer"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._manager.bt_address)},
-            "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
-            "manufacturer": "Storz & Bickel",
-            "model": "Volcano Hybrid Vaporizer",
-            "sw_version": "1.0.0",
-            "via_device": None,
-        }
-
-    @property
-    def native_value(self):
-        val = self._manager.auto_shut_off
-        _LOGGER.debug("%s: native_value -> '%s'", type(self).__name__, val)
-        return val
-
-    @property
-    def available(self):
-        return (self._manager.bt_status == "CONNECTED" and self._manager.auto_shut_off is not None)
+# REMOVED VolcanoAutoShutOffSensor class and references.
 
 
-# New Sensor: LED Brightness
 class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
     """Sensor to display the LED Brightness."""
 
@@ -296,8 +265,8 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano LED Brightness"
         self._attr_unique_id = f"volcano_led_brightness_{self._manager.bt_address}"
         self._attr_icon = "mdi:brightness-5"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -318,7 +287,6 @@ class VolcanoLEDBrightnessSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED" and self._manager.led_brightness is not None)
 
 
-# New Sensor: Hours of Operation
 class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
     """Sensor to display the Hours of Operation."""
 
@@ -327,8 +295,8 @@ class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Hours of Operation"
         self._attr_unique_id = f"volcano_hours_of_operation_{self._manager.bt_address}"
         self._attr_icon = "mdi:clock-outline"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -349,7 +317,6 @@ class VolcanoHoursOfOperationSensor(VolcanoBaseSensor):
         return (self._manager.bt_status == "CONNECTED" and self._manager.hours_of_operation is not None)
 
 
-# New Sensor: Minutes of Operation
 class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
     """Sensor to display the Minutes of Operation."""
 
@@ -358,8 +325,8 @@ class VolcanoMinutesOfOperationSensor(VolcanoBaseSensor):
         self._attr_name = "Volcano Minutes of Operation"
         self._attr_unique_id = f"volcano_minutes_of_operation_{self._manager.bt_address}"
         self._attr_icon = "mdi:clock-outline"
-        self._attr_device_class = None  # Generic sensor
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Categorized as Diagnostic
+        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
