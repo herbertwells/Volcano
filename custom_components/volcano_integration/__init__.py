@@ -18,8 +18,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Removed "switch" from this list
-PLATFORMS = ["sensor", "button", "number"]
+PLATFORMS = ["sensor", "button", "number", "switch"]
 
 # Define service names
 SERVICE_CONNECT = "connect"
@@ -129,7 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                     return
             else:
                 _LOGGER.warning("Current temperature is None; retrying...")
-            await asyncio.sleep(0.5)  # Poll every 500 ms
+            await asyncio.sleep(0.5)
             elapsed_time += 0.5
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
@@ -144,7 +143,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
 
-    # Removed the automatic call to manager.start() so it does NOT connect immediately
+    # Removed the automatic call to manager.start() here
+    # to prevent auto-connecting on startup.
 
     return True
 
