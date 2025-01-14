@@ -4,7 +4,7 @@ set_temperature:
     temperature:
       name: "Temperature"
       description: "The target temperature in °C (40-230)."
-      required: false
+      required: true
       example: 170
       selector:
         number:
@@ -12,20 +12,40 @@ set_temperature:
           max: 230
           step: 1
           unit_of_measurement: "°C"
-    percentage:
-      name: "Percentage"
-      description: "The target temperature as a percentage (0-100%)."
-      required: false
-      example: 50
+    wait_until_reached:
+      name: "Wait Until Reached"
+      description: "Whether to block until the target temperature is reached."
+      required: true
+      default: true
+      selector:
+        boolean: {}
+
+set_auto_shutoff_setting:
+  description: "Set the Auto Shutoff Setting for the Volcano in minutes."
+  fields:
+    minutes:
+      name: "Minutes"
+      description: "Auto Shutoff delay, in minutes."
+      required: true
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 240
+          step: 1
+          unit_of_measurement: "min"
+
+set_led_brightness:
+  description: "Set the LED Brightness of the Volcano (0-100)."
+  fields:
+    brightness:
+      name: "Brightness"
+      description: "The LED brightness percentage (0-100)."
+      required: true
+      default: 20
       selector:
         number:
           min: 0
           max: 100
           step: 1
-    wait_until_reached:
-      name: "Wait Until Reached"
-      description: "Whether to block until the target temperature is reached."
-      required: false
-      default: true
-      selector:
-        boolean: {}
+          unit_of_measurement: "%"
