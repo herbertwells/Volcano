@@ -20,7 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor", "button", "number", "switch"]
 
-# Define service names
+# -------------------------------------------------
+# Existing Service Name Constants
+# -------------------------------------------------
 SERVICE_CONNECT = "connect"
 SERVICE_DISCONNECT = "disconnect"
 SERVICE_PUMP_ON = "pump_on"
@@ -29,11 +31,30 @@ SERVICE_HEAT_ON = "heat_on"
 SERVICE_HEAT_OFF = "heat_off"
 SERVICE_SET_TEMPERATURE = "set_temperature"
 
-# Define schemas
+# -------------------------------------------------
+# NEW Service Name Constants
+# -------------------------------------------------
+SERVICE_SET_AUTO_SHUTOFF_SETTING = "set_auto_shutoff_setting"
+SERVICE_SET_LED_BRIGHTNESS = "set_led_brightness"
+
+# -------------------------------------------------
+# Existing set_temperature Schema
+# (modified to remove percentage, make temperature & wait_until_reached required)
+# -------------------------------------------------
 SET_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Optional("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
-    vol.Optional("percentage"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-    vol.Optional("wait_until_reached", default=True): cv.boolean,
+    vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
+    vol.Required("wait_until_reached", default=True): cv.boolean,
+})
+
+# -------------------------------------------------
+# NEW Services Schemas
+# -------------------------------------------------
+SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
+    vol.Required("minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+})
+
+SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
+    vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
 })
 
 
@@ -56,7 +77,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Forward setup to sensor, button, and number platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Register Services
+    # -------------------------------------------------
+    # Existing Services Handlers
+    # -------------------------------------------------
     async def handle_connect(call):
         """Handle the connect service."""
         _LOGGER.debug("Service 'connect' called.")
@@ -95,18 +118,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     async def handle_set_temperature(call):
         """Handle the set_temperature service."""
-        temperature = call.data.get("temperature")
-        percentage = call.data.get("percentage")
-        wait = call.data.get("wait_until_reached", True)
-
-        if percentage is not None:
-            # Convert percentage to temperature (0% -> 40°C, 100% -> 230°C)
-            temperature = int(40 + (percentage / 100) * (230 - 40))
-            _LOGGER.debug(f"Percentage {percentage}% converted to temperature {temperature}°C")
-
-        if temperature is None:
-            _LOGGER.error("No valid temperature or percentage provided for set_temperature.")
-            return
+        temperature = call.data["temperature"]
+        wait = call.data["wait_until_reached"]
 
         _LOGGER.debug(f"Service 'set_temperature' called with temperature={temperature}, wait={wait}")
         await manager.set_heater_temperature(temperature)
@@ -118,6 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         timeout = 300  # 5 minutes
         elapsed_time = 0
         _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
+
         while elapsed_time < timeout:
             if manager.current_temperature is not None:
                 _LOGGER.debug(
@@ -128,11 +142,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                     return
             else:
                 _LOGGER.warning("Current temperature is None; retrying...")
+
             await asyncio.sleep(0.5)
             elapsed_time += 0.5
+
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    # Register each service with Home Assistant
+    # -------------------------------------------------
+    # NEW Services Handlers
+    # -------------------------------------------------
+    async def handle_set_auto_shutoff_setting(call):
+        """Set the Volcano auto shutoff setting in minutes."""
+        minutes = call.data["minutes"]
+        _LOGGER.debug(f"Service 'set_auto_shutoff_setting' called with minutes={minutes}")
+        await manager.set_auto_shutoff_setting(minutes)
+
+    async def handle_set_led_brightness(call):
+        """Set the Volcano LED brightness."""
+        brightness = call.data["brightness"]
+        _LOGGER.debug(f"Service 'set_led_brightness' called with brightness={brightness}")
+        await manager.set_led_brightness(brightness)
+
+    # -------------------------------------------------
+    # Register All Services
+    # -------------------------------------------------
     hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect)
     hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
     hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on)
@@ -142,10 +175,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_AUTO_SHUTOFF_SETTING, handle_set_auto_shutoff_setting, schema=SET_AUTO_SHUTOFF_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_LED_BRIGHTNESS, handle_set_led_brightness, schema=SET_LED_BRIGHTNESS_SCHEMA
+    )
 
-    # Removed the automatic call to manager.start() here
-    # to prevent auto-connecting on startup.
-
+    # IMPORTANT: No auto-connect call here -> user must trigger connect
     return True
 
 
@@ -165,6 +202,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_ON)
     hass.services.async_remove(DOMAIN, SERVICE_HEAT_OFF)
     hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_AUTO_SHUTOFF_SETTING)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_LED_BRIGHTNESS)
 
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return True
