@@ -18,7 +18,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor", "button", "number", "switch"]
+# Removed "switch" from this list
+PLATFORMS = ["sensor", "button", "number"]
 
 # Define service names
 SERVICE_CONNECT = "connect"
@@ -143,8 +144,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
 
-    # Start the Bluetooth manager
-    await manager.start()
+    # Removed the automatic call to manager.start() so it does NOT connect immediately
 
     return True
 
