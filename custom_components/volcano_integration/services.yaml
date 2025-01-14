@@ -1,3 +1,27 @@
+connect:
+  description: "Connect to the Volcano device."
+  fields: {}
+
+disconnect:
+  description: "Disconnect from the Volcano device."
+  fields: {}
+
+pump_on:
+  description: "Turn the Volcano's pump on."
+  fields: {}
+
+pump_off:
+  description: "Turn the Volcano's pump off."
+  fields: {}
+
+heat_on:
+  description: "Turn the Volcano's heater on."
+  fields: {}
+
+heat_off:
+  description: "Turn the Volcano's heater off."
+  fields: {}
+
 set_temperature:
   description: "Set the temperature of the Volcano vaporizer."
   fields:
