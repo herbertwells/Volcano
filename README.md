@@ -2,6 +2,9 @@
 
 **This integration is under heavy, active development. There may be multiple updates per day, possibly resulting in errors or disruption to the integration or Home Assistant. I will change this notice once the software is available for a proper release.**
 
+To Do:
+- Add blocking "wait until connected" option to Bluetooth connect service for use in scripts/automations.
+
 A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation into the Home Assistant scripting and automation systems.
 
 One of the main features of the official Volcano app includes workflows; these are the real-time Bluetooth instructions usually sent from your mobile device to the vaporizer when using it. But, because these instructions are sent in real-time, it means that closing or sometimes even minimising the app actually stops the workflow prematurely. This integration fixes that by using Home Assistant as the Bluetooth client instead of your mobile device; the connection is persistent and asyncronous. This allows us to utilise Home Assistant scripts and automations in the same way we would create a workflow.
@@ -140,6 +143,8 @@ sequence:
 alias: Volcano Stop All Scripts
 description: ""
 ```
+
+Now you're set to create your own scripts and automations for the Volcano Vaporizer. 
 
 ---
 
