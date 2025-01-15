@@ -121,7 +121,24 @@ sequence:
     data: {}
 description: ""
 mode: restart
+```
 
+I also strongly recommend creating another script, which allows you to stop any Volcano workflow at will. It should also turn the heat and pump off;
+```
+sequence:
+  - action: volcano_integration.heat_off
+    data: {}
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: script.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+        - script.volcano_workflow_1
+        - script.volcano_workflow_1_script
+alias: Volcano Stop All Scripts
+description: ""
 ```
 
 ---
