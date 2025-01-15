@@ -12,15 +12,118 @@ The default workflow in the offical app is as follows;
 Turn heat on.
 Set temperature to 170C.
 Wait until temperature reaches target.
-Turn on pump for 6 seconds.
+Turn on pump for 5 seconds.
 Set heat to 175C.
 Wait until temperature reaches target.
-Turn on pump for 6 seconds.
+Turn on pump for 5 seconds.
 Set heat to 180C.
 Wait until temperature reaches target.
-Turn on pump for 6 seconds.
+Turn on pump for 5 seconds.
 *Repeats until temperature reaches 220C.*
 ```
+
+To translate this into a Home Assistant script;
+```
+alias: Volcano Workflow 1
+sequence:
+  - action: volcano_integration.heat_on
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 170
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 175
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 180
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 185
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 190
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 195
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 200
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  - action: volcano_integration.pump_off
+    data: {}
+  - action: volcano_integration.heat_off
+    data: {}
+description: ""
+mode: restart
+
+```
+
 ---
 
 ## Features
