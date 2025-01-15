@@ -4,6 +4,23 @@
 
 A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation into the Home Assistant scripting and automation systems.
 
+One of the main features of the official Volcano app includes workflows; these are the real-time Bluetooth instructions usually sent from your mobile device to the vaporizer when using it. But, because these instructions are sent in real-time, it means that closing or sometimes even minimising the app actually stops the workflow prematurely. However, but we're now using your Home Assistant server rather than your mobile device, the connection is persistent and asyncronous. This lets us use Home Assistant scripts and automations in the same way we would create a workflow.
+
+The default workflow in the offical app is as follows;
+
+```
+Turn heat on.
+Set temperature to 170C.
+Wait until temperature reaches target.
+Turn on pump for 6 seconds.
+Set heat to 175C.
+Wait until temperature reaches target.
+Turn on pump for 6 seconds.
+Set heat to 180C.
+Wait until temperature reaches target.
+Turn on pump for 6 seconds.
+*Repeats until temperature reaches 220C.*
+```
 ---
 
 ## Features
