@@ -30,99 +30,63 @@ To translate this into a Home Assistant script;
 alias: Volcano Workflow 1
 sequence:
   - action: volcano_integration.heat_on
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 170
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
-      milliseconds: 0
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 175
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
-      milliseconds: 0
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 180
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
-      milliseconds: 0
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 185
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
-      milliseconds: 0
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 190
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
-      milliseconds: 0
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 195
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.set_temperature
     data:
       temperature: 200
       wait_until_reached: true
   - action: volcano_integration.pump_on
-    data: {}
   - delay:
-      hours: 0
-      minutes: 0
       seconds: 5
   - action: volcano_integration.pump_off
-    data: {}
   - action: volcano_integration.heat_off
-    data: {}
-description: ""
 mode: restart
 ```
 
