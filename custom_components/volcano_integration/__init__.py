@@ -57,11 +57,14 @@ SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
     vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
 })
 
+# NEW: Connect Service Schema
+CONNECT_SCHEMA = vol.Schema({
+    vol.Optional("wait_until_connected", default=False): cv.boolean,
+})
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up integration via YAML (if any)."""
     return True
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Volcano Integration from a config entry."""
@@ -83,8 +86,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_connect(call):
         """Handle the connect service."""
         _LOGGER.debug("Service 'connect' called.")
+        wait = call.data.get("wait_until_connected", False)
         if not manager._connected:
             await manager.async_user_connect()
+            if wait:
+                await wait_until_connected(hass, manager)
         else:
             _LOGGER.info("Already connected to the device.")
 
@@ -148,6 +154,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
+    # NEW: Wait until connected helper function
+    async def wait_until_connected(hass: HomeAssistant, manager: VolcanoBTManager):
+        """Wait until the Bluetooth manager is connected."""
+        timeout = 30  # 30 seconds
+        elapsed_time = 0
+        _LOGGER.debug(f"Waiting for Bluetooth to connect with timeout {timeout}s")
+
+        while elapsed_time < timeout:
+            if manager.bt_status == "CONNECTED":
+                _LOGGER.info("Bluetooth connection established.")
+                return
+            elif manager.bt_status == "ERROR":
+                _LOGGER.warning("Bluetooth connection encountered an error.")
+                return
+            await asyncio.sleep(0.5)
+            elapsed_time += 0.5
+
+        _LOGGER.warning("Timeout reached while waiting for Bluetooth to connect.")
+
     # -------------------------------------------------
     # NEW Services Handlers
     # -------------------------------------------------
@@ -166,7 +191,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # -------------------------------------------------
     # Register All Services
     # -------------------------------------------------
-    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect)
+    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
     hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on)
     hass.services.async_register(DOMAIN, SERVICE_PUMP_OFF, handle_pump_off)
@@ -184,7 +209,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # IMPORTANT: No auto-connect call here -> user must trigger connect
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload the Volcano Integration."""
