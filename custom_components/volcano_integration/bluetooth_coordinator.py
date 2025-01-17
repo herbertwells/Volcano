@@ -1,5 +1,4 @@
-# custom_components/volcano_integration/bluetooth_coordinator.py
-
+"""bluetooth_coordinator.py - Volcano Integration for Home Assistant."""
 import asyncio
 import logging
 from bleak import BleakClient, BleakError
