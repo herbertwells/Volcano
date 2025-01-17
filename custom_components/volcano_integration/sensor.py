@@ -1,4 +1,4 @@
-"""Platform for sensor integration."""
+"""sensor.py - Volcano Integration for Home Assistant."""
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
