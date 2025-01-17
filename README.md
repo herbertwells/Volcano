@@ -12,7 +12,19 @@ One of the main features of the official Volcano app includes workflows; these a
 
 The default workflow in the official app is as follows:
 
-Turn heat on. Set temperature to 170C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 175C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 180C. Wait until temperature reaches target. Turn on pump for 5 seconds. Repeats until temperature reaches 220C.
+```
+
+- Turn heat on.
+- Set temperature to 170C.
+- Wait until temperature reaches target.
+- Turn on pump for 5 seconds.
+- Set heat to 175C.
+- Wait until temperature reaches target.
+- Turn on pump for 5 seconds. Set heat to 180C.
+- Wait until temperature reaches target. Turn on pump for 5 seconds.
+- Repeats until temperature reaches 220C.
+
+```
 
 
 To translate this into a Home Assistant script:
