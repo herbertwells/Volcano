@@ -252,4 +252,4 @@ All contributions, including bug reports, new features, and documentation improv
 
 ---
 
-**Enjoy automating your Volcano Hybrid Vaporizer with Home Assistant!**
+**Enjoy creating your own custom workflows and happy vaping!**
