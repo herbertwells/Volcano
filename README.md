@@ -6,106 +6,65 @@
 
 A custom Home Assistant integration to connect and control the **Storz & Bickel Volcano Hybrid Vaporizer** via Bluetooth. This integration enables precise control over the vaporizer's heat and pump functions, real-time monitoring of temperature, and seamless automation into the Home Assistant scripting and automation systems.
 
-One of the main features of the official Volcano app includes workflows; these are the real-time Bluetooth instructions usually sent from your mobile device to the vaporizer when using it. But, because these instructions are sent in real-time, it means that closing or sometimes even minimising the app actually stops the workflow prematurely. This integration fixes that by using Home Assistant as the Bluetooth client instead of your mobile device; the connection is persistent and asyncronous. This allows us to utilise Home Assistant scripts and automations in the same way we would create a workflow.
+One of the main features of the official Volcano app includes workflows; these are the real-time Bluetooth instructions usually sent from your mobile device to the vaporizer when using it. But, because these instructions are sent in real-time, it means that closing or sometimes even minimizing the app actually stops the workflow prematurely. This integration fixes that by using Home Assistant as the Bluetooth client instead of your mobile device; the connection is persistent and asynchronous. This allows us to utilize Home Assistant scripts and automations in the same way we would create a workflow.
 
 ---
 
-The default workflow in the offical app is as follows;
+The default workflow in the official app is as follows:
 
-```
-Turn heat on.
-Set temperature to 170C.
-Wait until temperature reaches target.
-Turn on pump for 5 seconds.
-Set heat to 175C.
-Wait until temperature reaches target.
-Turn on pump for 5 seconds.
-Set heat to 180C.
-Wait until temperature reaches target.
-Turn on pump for 5 seconds.
-*Repeats until temperature reaches 220C.*
-```
+Turn heat on. Set temperature to 170C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 175C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 180C. Wait until temperature reaches target. Turn on pump for 5 seconds. Repeats until temperature reaches 220C.
 
-To translate this into a Home Assistant script;
-```
-alias: Volcano Workflow 1
-sequence:
-  - action: volcano_integration.heat_on
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 170
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 175
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 180
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 185
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 190
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 195
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.set_temperature
-    data:
-      temperature: 200
-      wait_until_reached: true
-  - action: volcano_integration.pump_on
-  - delay:
-      seconds: 5
-  - action: volcano_integration.pump_off
-  - action: volcano_integration.heat_off
-mode: restart
-```
+csharp
+Copy
 
-I also strongly recommend creating another script, which allows you to stop any Volcano workflow at will. It should also turn the heat and pump off;
-```
-sequence:
-  - action: volcano_integration.heat_off
-  - action: volcano_integration.pump_off
-  - action: script.turn_off
-    target:
-      entity_id:
-        - script.volcano_workflow_1
-        - script.volcano_workflow_1_script
-alias: Volcano Stop All Scripts
-description: "Stops all Volcano Vaporizer scripts."
-```
+To translate this into a Home Assistant script:
 
-Now you're set to create your own scripts and automations for the Volcano Vaporizer. 
+alias: Volcano Workflow 1 sequence:
+
+service: volcano_integration.heat_on
+service: volcano_integration.set_temperature data: temperature: 170 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 175 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 180 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 185 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 190 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 195 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.set_temperature data: temperature: 200 wait_until_reached: true
+service: volcano_integration.pump_on
+delay: seconds: 5
+service: volcano_integration.pump_off
+service: volcano_integration.heat_off mode: restart
+arduino
+Copy
+
+I also strongly recommend creating another script, which allows you to stop any Volcano workflow at will. It should also turn the heat and pump off:
+
+alias: Volcano Stop All Scripts description: "Stops all Volcano Vaporizer scripts." sequence:
+
+service: volcano_integration.heat_off
+service: volcano_integration.pump_off
+service: script.turn_off target: entity_id: - script.volcano_workflow_1 - script.volcano_workflow_1_script mode: single
+markdown
+Copy
+
+Now you're set to create your own scripts and automations for the Volcano Vaporizer.
 
 ---
 
@@ -229,8 +188,10 @@ Now you're set to create your own scripts and automations for the Volcano Vapori
 
 - **Bluetooth Adapter**  
   Ensure your system recognizes and can use the Bluetooth adapter. If the adapter isn’t detected, the integration won’t be able to connect.
+  
 - **Proximity**  
   Keep the Volcano within a reasonable range of the Bluetooth adapter to prevent connectivity issues.
+  
 - **Logs**  
   Check Home Assistant’s logs for debug messages. Increasing the log level for `custom_components.volcano_integration` can help diagnose connection problems.
 
