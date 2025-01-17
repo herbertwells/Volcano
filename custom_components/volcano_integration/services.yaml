@@ -1,6 +1,13 @@
 connect:
   description: "Connect to the Volcano device."
-  fields: {}
+  fields:
+    wait_until_connected:
+      name: "Wait Until Connected"
+      description: "Whether to block until the device is fully connected."
+      required: false
+      default: false
+      selector:
+        boolean: {}
 
 disconnect:
   description: "Disconnect from the Volcano device."
