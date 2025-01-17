@@ -57,7 +57,7 @@ SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
     vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
 })
 
-# NEW: Connect Service Schema
+# **NEW**: Connect Service Schema
 CONNECT_SCHEMA = vol.Schema({
     vol.Optional("wait_until_connected", default=False): cv.boolean,
 })
@@ -77,7 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 
-    # Forward setup to sensor, button, and number platforms
+    # Forward setup to sensor, button, number, switch platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # -------------------------------------------------
@@ -133,7 +133,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             await wait_for_temperature(hass, manager, temperature)
 
     async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
-        """Wait until the current temperature reaches or exceeds the target temperature."""
+        """Wait until current temperature reaches or exceeds target_temp."""
         timeout = 300  # 5 minutes
         elapsed_time = 0
         _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
@@ -154,10 +154,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    # NEW: Wait until connected helper function
+    # **NEW**: Wait until connected helper function
     async def wait_until_connected(hass: HomeAssistant, manager: VolcanoBTManager):
         """Wait until the Bluetooth manager is connected."""
-        timeout = 30  # 30 seconds
+        timeout = 30  # seconds
         elapsed_time = 0
         _LOGGER.debug(f"Waiting for Bluetooth to connect with timeout {timeout}s")
 
@@ -191,12 +191,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # -------------------------------------------------
     # Register All Services
     # -------------------------------------------------
-    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
-    hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on)
-    hass.services.async_register(DOMAIN, SERVICE_PUMP_OFF, handle_pump_off)
-    hass.services.async_register(DOMAIN, SERVICE_HEAT_ON, handle_heat_on)
-    hass.services.async_register(DOMAIN, SERVICE_HEAT_OFF, handle_heat_off)
+    hass.services.async_register(
+        DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_DISCONNECT, handle_disconnect
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PUMP_ON, handle_pump_on
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PUMP_OFF, handle_pump_off
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_HEAT_ON, handle_heat_on
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_HEAT_OFF, handle_heat_off
+    )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
