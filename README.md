@@ -14,55 +14,92 @@ The default workflow in the official app is as follows:
 
 Turn heat on. Set temperature to 170C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 175C. Wait until temperature reaches target. Turn on pump for 5 seconds. Set heat to 180C. Wait until temperature reaches target. Turn on pump for 5 seconds. Repeats until temperature reaches 220C.
 
-csharp
-Copy
 
 To translate this into a Home Assistant script:
 
-alias: Volcano Workflow 1 sequence:
+```
 
-service: volcano_integration.heat_on
-service: volcano_integration.set_temperature data: temperature: 170 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 175 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 180 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 185 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 190 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 195 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.set_temperature data: temperature: 200 wait_until_reached: true
-service: volcano_integration.pump_on
-delay: seconds: 5
-service: volcano_integration.pump_off
-service: volcano_integration.heat_off mode: restart
-arduino
-Copy
+alias: Volcano Workflow 1
+sequence:
+  - action: volcano_integration.heat_on
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 170
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 175
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 180
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 185
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 190
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 195
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.set_temperature
+    data:
+      temperature: 200
+      wait_until_reached: true
+  - action: volcano_integration.pump_on
+  - delay:
+      seconds: 5
+  - action: volcano_integration.pump_off
+  - action: volcano_integration.heat_off
+description: ""
+mode: restart
+
+```
 
 I also strongly recommend creating another script, which allows you to stop any Volcano workflow at will. It should also turn the heat and pump off:
 
-alias: Volcano Stop All Scripts description: "Stops all Volcano Vaporizer scripts." sequence:
+```
 
-service: volcano_integration.heat_off
-service: volcano_integration.pump_off
-service: script.turn_off target: entity_id: - script.volcano_workflow_1 - script.volcano_workflow_1_script mode: single
-markdown
-Copy
+alias: Volcano Stop All Scripts
+sequence:
+  - action: volcano_integration.heat_off
+  - action: volcano_integration.pump_off
+  - action: script.turn_off
+    target:
+      entity_id:
+        - script.volcano_workflow_1
+description: ""
+mode: restart
+
+```
 
 Now you're set to create your own scripts and automations for the Volcano Vaporizer.
 
