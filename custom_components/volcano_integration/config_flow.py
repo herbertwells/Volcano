@@ -1,4 +1,4 @@
-"""Config flow for Volcano Integration."""
+"""config_flow.py - Volcano Integration for Home Assistant."""
 import logging
 import asyncio
 
