@@ -1,6 +1,4 @@
-"""Platform for number integration - to set heater temperature (40–230 °C)
-   and now LED Brightness (0–100), plus Auto Shutoff Setting in minutes."""
-
+"""number.py - Volcano Integration for Home Assistant."""
 import logging
 
 from homeassistant.components.number import NumberEntity
