@@ -210,7 +210,7 @@ Now you're set to create your own scripts and automations for the Volcano Vapori
 - **`volcano_integration.connect`**  
   Connect to the vaporizer.  
   - **Parameters**  
-    - `wait_until_connected` (optional, default: false): Whether to block until the device is fully connected.
+    - `wait_until_connected` (optional, default: true): Whether to block until the device is fully connected.
 
 - **`volcano_integration.disconnect`**  
   Disconnect from the vaporizer.
