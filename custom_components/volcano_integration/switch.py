@@ -1,4 +1,4 @@
-"""Platform for switch integration."""
+"""switch.py - Volcano Integration for Home Assistant."""
 import logging
 
 from homeassistant.components.switch import SwitchEntity
