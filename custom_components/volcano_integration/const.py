@@ -1,4 +1,4 @@
-"""Constants for the Volcano Integration."""
+"""const.py - Volcano Integration for Home Assistant."""
 
 DOMAIN = "volcano_integration"
 
