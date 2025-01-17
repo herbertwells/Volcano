@@ -39,7 +39,6 @@ SERVICE_SET_LED_BRIGHTNESS = "set_led_brightness"
 
 # -------------------------------------------------
 # Existing set_temperature Schema
-# (modified to remove percentage, make temperature & wait_until_reached required)
 # -------------------------------------------------
 SET_TEMPERATURE_SCHEMA = vol.Schema({
     vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
@@ -57,9 +56,9 @@ SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
     vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
 })
 
-# **NEW**: Connect Service Schema
+# CHANGED: Connect Service Schema to 'Required' so the UI shows a checkbox
 CONNECT_SCHEMA = vol.Schema({
-    vol.Optional("wait_until_connected", default=False): cv.boolean,
+    vol.Required("wait_until_connected", default=False): cv.boolean,
 })
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -133,7 +132,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             await wait_for_temperature(hass, manager, temperature)
 
     async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
-        """Wait until current temperature reaches or exceeds target_temp."""
+        """Wait until the current temperature reaches or exceeds the target temperature."""
         timeout = 300  # 5 minutes
         elapsed_time = 0
         _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
@@ -154,10 +153,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    # **NEW**: Wait until connected helper function
+    # NEW: Wait until connected helper function
     async def wait_until_connected(hass: HomeAssistant, manager: VolcanoBTManager):
         """Wait until the Bluetooth manager is connected."""
-        timeout = 30  # seconds
+        timeout = 30  # 30 seconds
         elapsed_time = 0
         _LOGGER.debug(f"Waiting for Bluetooth to connect with timeout {timeout}s")
 
@@ -191,24 +190,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # -------------------------------------------------
     # Register All Services
     # -------------------------------------------------
-    hass.services.async_register(
-        DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_DISCONNECT, handle_disconnect
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_PUMP_ON, handle_pump_on
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_PUMP_OFF, handle_pump_off
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_HEAT_ON, handle_heat_on
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_HEAT_OFF, handle_heat_off
-    )
+    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_OFF, handle_pump_off)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_ON, handle_heat_on)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_OFF, handle_heat_off)
     hass.services.async_register(
         DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
     )
