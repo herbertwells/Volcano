@@ -1,4 +1,4 @@
-"""Platform for button integration. Adds Pump/Heat On/Off in addition to Connect/Disconnect."""
+"""button.py - Volcano Integration for Home Assistant."""
 import logging
 from homeassistant.components.button import ButtonEntity
 from . import DOMAIN
