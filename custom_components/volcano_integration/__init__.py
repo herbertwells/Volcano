@@ -58,7 +58,7 @@ SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
 
 # CHANGED: Connect Service Schema to 'Required' so the UI shows a checkbox
 CONNECT_SCHEMA = vol.Schema({
-    vol.Required("wait_until_connected", default=False): cv.boolean,
+    vol.Required("wait_until_connected", default=True): cv.boolean,
 })
 
 async def async_setup(hass: HomeAssistant, config: dict):
