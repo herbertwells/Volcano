@@ -14,6 +14,19 @@ from .const import (
     UUID_PUMP_OFF,
     UUID_HEAT_ON,
     UUID_HEAT_OFF,
+    SERVICE_CONNECT,
+    SERVICE_DISCONNECT,
+    SERVICE_PUMP_ON,
+    SERVICE_PUMP_OFF,
+    SERVICE_HEAT_ON,
+    SERVICE_HEAT_OFF,
+    SERVICE_SET_TEMPERATURE,
+    SERVICE_SET_AUTO_SHUTOFF_SETTING,
+    SERVICE_SET_LED_BRIGHTNESS,
+    CONNECT_SCHEMA,
+    SET_TEMPERATURE_SCHEMA,
+    SET_AUTO_SHUTOFF_SCHEMA,
+    SET_LED_BRIGHTNESS_SCHEMA,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,45 +34,8 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor", "button", "number", "switch"]
 
 # -------------------------------------------------
-# Existing Service Name Constants
+# Service Handlers
 # -------------------------------------------------
-SERVICE_CONNECT = "connect"
-SERVICE_DISCONNECT = "disconnect"
-SERVICE_PUMP_ON = "pump_on"
-SERVICE_PUMP_OFF = "pump_off"
-SERVICE_HEAT_ON = "heat_on"
-SERVICE_HEAT_OFF = "heat_off"
-SERVICE_SET_TEMPERATURE = "set_temperature"
-
-# -------------------------------------------------
-# NEW Service Name Constants
-# -------------------------------------------------
-SERVICE_SET_AUTO_SHUTOFF_SETTING = "set_auto_shutoff_setting"
-SERVICE_SET_LED_BRIGHTNESS = "set_led_brightness"
-
-# -------------------------------------------------
-# Existing set_temperature Schema
-# -------------------------------------------------
-SET_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=40, max=230)),
-    vol.Required("wait_until_reached", default=True): cv.boolean,
-})
-
-# -------------------------------------------------
-# NEW Services Schemas
-# -------------------------------------------------
-SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
-    vol.Required("minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
-})
-
-SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
-    vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-})
-
-# CHANGED: Connect Service Schema to 'Required' so the UI shows a checkbox
-CONNECT_SCHEMA = vol.Schema({
-    vol.Required("wait_until_connected", default=True): cv.boolean,
-})
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up integration via YAML (if any)."""
@@ -80,7 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # -------------------------------------------------
-    # Existing Services Handlers
+    # Service Handlers Definitions
     # -------------------------------------------------
     async def handle_connect(call):
         """Handle the connect service."""
@@ -131,6 +107,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         if wait:
             await wait_for_temperature(hass, manager, temperature)
 
+    async def handle_set_auto_shutoff_setting(call):
+        """Set the Volcano auto shutoff setting in minutes."""
+        minutes = call.data["minutes"]
+        _LOGGER.debug(f"Service 'set_auto_shutoff_setting' called with minutes={minutes}")
+        await manager.set_auto_shutoff_setting(minutes)
+
+    async def handle_set_led_brightness(call):
+        """Set the Volcano LED brightness."""
+        brightness = call.data["brightness"]
+        _LOGGER.debug(f"Service 'set_led_brightness' called with brightness={brightness}")
+        await manager.set_led_brightness(brightness)
+
+    # -------------------------------------------------
+    # Helper Functions
+    # -------------------------------------------------
     async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: int):
         """Wait until the current temperature reaches or exceeds the target temperature."""
         timeout = 300  # 5 minutes
@@ -153,7 +144,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
 
-    # NEW: Wait until connected helper function
     async def wait_until_connected(hass: HomeAssistant, manager: VolcanoBTManager):
         """Wait until the Bluetooth manager is connected."""
         timeout = 30  # 30 seconds
@@ -173,22 +163,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.warning("Timeout reached while waiting for Bluetooth to connect.")
 
     # -------------------------------------------------
-    # NEW Services Handlers
-    # -------------------------------------------------
-    async def handle_set_auto_shutoff_setting(call):
-        """Set the Volcano auto shutoff setting in minutes."""
-        minutes = call.data["minutes"]
-        _LOGGER.debug(f"Service 'set_auto_shutoff_setting' called with minutes={minutes}")
-        await manager.set_auto_shutoff_setting(minutes)
-
-    async def handle_set_led_brightness(call):
-        """Set the Volcano LED brightness."""
-        brightness = call.data["brightness"]
-        _LOGGER.debug(f"Service 'set_led_brightness' called with brightness={brightness}")
-        await manager.set_led_brightness(brightness)
-
-    # -------------------------------------------------
-    # Register All Services
+    # Register All Services with Descriptions
     # -------------------------------------------------
     hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect)
