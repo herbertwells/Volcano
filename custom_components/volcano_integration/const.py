@@ -39,6 +39,29 @@ UUID_HOURS_OF_OPERATION = "10110015-5354-4f52-5a26-4249434b454c"   # Hours of Op
 UUID_MINUTES_OF_OPERATION = "10110016-5354-4f52-5a26-4249434b454c" # Minutes of Operation
 UUID_VIBRATION = "1010000e-5354-4f52-5a26-4249434b454c"           # Vibration Control
 
+# Temperature Control Constants
+MIN_TEMP = 40.0        # Minimum Temperature in °C
+MAX_TEMP = 230.0       # Maximum Temperature in °C
+DEFAULT_TEMP = 170.0   # Default Temperature in °C
+STEP = 1.0             # Temperature Step
+
+# LED Brightness Constants
+MIN_BRIGHTNESS = 0    # Minimum LED Brightness (%)
+MAX_BRIGHTNESS = 100  # Maximum LED Brightness (%)
+DEFAULT_BRIGHTNESS = 20  # Default LED Brightness (%)
+
+# Auto Shutoff Settings
+MIN_AUTO_SHUTOFF = 1    # Minimum Auto Shutoff Time (minutes)
+MAX_AUTO_SHUTOFF = 240  # Maximum Auto Shutoff Time (minutes)
+DEFAULT_AUTO_SHUTOFF = 30  # Default Auto Shutoff Time (minutes)
+
+# Hours and Minutes of Operation
+DEFAULT_HOURS_OF_OPERATION = 0
+DEFAULT_MINUTES_OF_OPERATION = 0
+
+# Refresh Option Value for Config Flow
+REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
+
 # Service Names
 SERVICE_CONNECT = "connect"
 SERVICE_DISCONNECT = "disconnect"
@@ -96,9 +119,9 @@ SERVICE_DESCRIPTIONS = {
                 "example": 170,
                 "selector": {
                     "number": {
-                        "min": 40,
-                        "max": 230,
-                        "step": 1,
+                        "min": MIN_TEMP,
+                        "max": MAX_TEMP,
+                        "step": STEP,
                         "unit_of_measurement": "°C",
                     }
                 },
@@ -121,11 +144,11 @@ SERVICE_DESCRIPTIONS = {
                 "name": "Minutes",
                 "description": "Auto Shutoff delay, in minutes.",
                 "required": True,
-                "default": 30,
+                "default": DEFAULT_AUTO_SHUTOFF,
                 "selector": {
                     "number": {
-                        "min": 1,
-                        "max": 240,
+                        "min": MIN_AUTO_SHUTOFF,
+                        "max": MAX_AUTO_SHUTOFF,
                         "step": 1,
                         "unit_of_measurement": "min",
                     }
@@ -140,11 +163,11 @@ SERVICE_DESCRIPTIONS = {
                 "name": "Brightness",
                 "description": "The LED brightness percentage (0-100).",
                 "required": True,
-                "default": 20,
+                "default": DEFAULT_BRIGHTNESS,
                 "selector": {
                     "number": {
-                        "min": 0,
-                        "max": 100,
+                        "min": MIN_BRIGHTNESS,
+                        "max": MAX_BRIGHTNESS,
                         "step": 1,
                         "unit_of_measurement": "%",
                     }
@@ -170,17 +193,14 @@ HEAT_ON_SCHEMA = vol.Schema({})
 HEAT_OFF_SCHEMA = vol.Schema({})
 
 SET_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Required("temperature"): vol.All(vol.Coerce(float), vol.Range(min=40, max=230)),
+    vol.Required("temperature"): vol.All(vol.Coerce(float), vol.Range(min=MIN_TEMP, max=MAX_TEMP)),
     vol.Required("wait_until_reached", default=True): bool,
 })
 
 SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
-    vol.Required("minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+    vol.Required("minutes", default=DEFAULT_AUTO_SHUTOFF): vol.All(vol.Coerce(int), vol.Range(min=MIN_AUTO_SHUTOFF, max=MAX_AUTO_SHUTOFF)),
 })
 
 SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
-    vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+    vol.Required("brightness", default=DEFAULT_BRIGHTNESS): vol.All(vol.Coerce(int), vol.Range(min=MIN_BRIGHTNESS, max=MAX_BRIGHTNESS)),
 })
-
-# Refresh Option Value for Config Flow
-REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
