@@ -13,6 +13,7 @@ from .const import (
     UUID_HEATER_SETPOINT,
     UUID_LED_BRIGHTNESS,
     UUID_AUTO_SHUT_OFF_SETTING,
+    BT_STATUS_CONNECTED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +37,6 @@ class VolcanoHeaterTempNumber(NumberEntity):
 
     def __init__(self, manager, config_entry):
         """Initialize the Heater Temperature number entity."""
-        super().__init__()
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Heater Temperature Setpoint"
@@ -95,7 +95,6 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
 
     def __init__(self, manager, config_entry):
         """Initialize the LED Brightness number entity."""
-        super().__init__()
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano LED Brightness"
@@ -116,12 +115,12 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
         self._attr_native_step = 1
         self._attr_unit_of_measurement = "%"
 
+        self._brightness = self._manager.led_brightness if self._manager.led_brightness is not None else 0
+
     @property
     def native_value(self):
         """Return the current LED brightness."""
-        if self._manager.led_brightness is not None:
-            return self._manager.led_brightness
-        return 0
+        return self._brightness
 
     @property
     def available(self):
@@ -136,6 +135,7 @@ class VolcanoLEDBrightnessNumber(NumberEntity):
             value,
             brightness_int,
         )
+        self._brightness = brightness_int
         await self._manager.set_led_brightness(brightness_int)
         self.async_write_ha_state()
 
@@ -154,14 +154,11 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
 
     def __init__(self, manager, config_entry):
         """Initialize the Auto Shutoff Setting number entity."""
-        super().__init__()
         self._manager = manager
         self._config_entry = config_entry
         self._attr_name = "Volcano Auto Shutoff Setting"
         self._attr_unique_id = f"volcano_auto_shutoff_minutes_{self._manager.bt_address}"
         self._attr_icon = "mdi:timer-cog"
-        self._attr_native_min_value = 30
-        self._attr_native_max_value = 360
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._manager.bt_address)},
             "name": self._config_entry.data.get("device_name", "Volcano Vaporizer"),
@@ -171,18 +168,18 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
             "via_device": None,
         }
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        # Updated range: 30–360 minutes
-        self._attr_native_min_value = 30
-        self._attr_native_max_value = 360
+        # Updated range: 1–240 minutes
+        self._attr_native_min_value = MIN_AUTO_SHUTOFF
+        self._attr_native_max_value = MAX_AUTO_SHUTOFF
         self._attr_native_step = 1
         self._attr_unit_of_measurement = "min"
+
+        self._minutes = self._manager.auto_shut_off_setting if self._manager.auto_shut_off_setting is not None else DEFAULT_AUTO_SHUTOFF
 
     @property
     def native_value(self):
         """Return the current auto shutoff minutes from the manager."""
-        if self._manager.auto_shut_off_setting is not None:
-            return self._manager.auto_shut_off_setting
-        return 0
+        return self._minutes
 
     @property
     def available(self):
@@ -193,6 +190,7 @@ class VolcanoAutoShutOffMinutesNumber(NumberEntity):
         """Write the new auto shutoff time in minutes to the device."""
         minutes = int(value)
         _LOGGER.debug("User set Auto Shutoff to %d minutes", minutes)
+        self._minutes = minutes
         await self._manager.set_auto_shutoff_setting(minutes)
         self.async_write_ha_state()
 
