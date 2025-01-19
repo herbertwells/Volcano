@@ -33,8 +33,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-RECONNECT_INTERVAL = 3
-TEMP_POLL_INTERVAL = 1
+RECONNECT_INTERVAL = 3  # Seconds between reconnection attempts
+TEMP_POLL_INTERVAL = 1  # Seconds between temperature polls
 
 VALID_PATTERNS = {
     (0x23, 0x00): ("ON", "OFF"),
@@ -47,13 +47,13 @@ VALID_PATTERNS = {
     (0x23, 0x36): ("ON", "ON (0x36)"),
 }
 
-
 class VolcanoBTManager:
     """
     Manages Bluetooth communication with the Volcano device.
     """
 
     def __init__(self, bt_address: str):
+        """Initialize the Bluetooth manager with the device address."""
         self.bt_address = bt_address
         self._client = None
         self._connected = False
