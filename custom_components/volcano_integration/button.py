@@ -1,18 +1,17 @@
 """button.py - Volcano Integration for Home Assistant."""
 import logging
 from homeassistant.components.button import ButtonEntity
+from . import DOMAIN
+
 from .const import (
-    DOMAIN,
-    SERVICE_CONNECT,
-    SERVICE_DISCONNECT,
-    SERVICE_PUMP_ON,
-    SERVICE_PUMP_OFF,
-    SERVICE_HEAT_ON,
-    SERVICE_HEAT_OFF,
+    UUID_PUMP_ON,
+    UUID_PUMP_OFF,
+    UUID_HEAT_ON,
+    UUID_HEAT_OFF,
 )
-from .const import SERVICE_DESCRIPTIONS  # Assuming service descriptions are now in const.py
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano buttons for a config entry."""
@@ -30,11 +29,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     ]
     async_add_entities(entities)
 
+
 class VolcanoBaseButton(ButtonEntity):
     """Base button for the Volcano integration that references the BT manager."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the base button with manager and config entry."""
         super().__init__()
         self._manager = manager
         self._config_entry = config_entry
@@ -62,41 +61,41 @@ class VolcanoBaseButton(ButtonEntity):
         _LOGGER.debug("%s removed from Home Assistant.", self._attr_name)
         self._manager.unregister_sensor(self)
 
+
 class VolcanoConnectButton(VolcanoBaseButton):
     """A button to force the Volcano integration to connect BLE."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Connect button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Connect"
         self._attr_unique_id = f"volcano_connect_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:bluetooth-connect"
 
     async def async_press(self):
-        """Handle button press to connect."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoConnectButton pressed.")
         await self._manager.async_user_connect()
+
 
 class VolcanoDisconnectButton(VolcanoBaseButton):
     """A button to force the Volcano integration to disconnect BLE."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Disconnect button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Disconnect"
         self._attr_unique_id = f"volcano_disconnect_button_{self._manager.bt_address}"
         self._attr_icon = "mdi:bluetooth-off"
 
     async def async_press(self):
-        """Handle button press to disconnect."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoDisconnectButton pressed.")
         await self._manager.async_user_disconnect()
+
 
 class VolcanoPumpOnButton(VolcanoBaseButton):
     """A button to turn Pump ON by writing to a GATT characteristic."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Pump On button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Pump On"
         self._attr_unique_id = f"volcano_pump_on_button_{self._manager.bt_address}"
@@ -105,18 +104,18 @@ class VolcanoPumpOnButton(VolcanoBaseButton):
     @property
     def available(self):
         """Available only when Bluetooth is connected."""
-        return self._manager.bt_status == BT_STATUS_CONNECTED
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
-        """Handle button press to turn pump on."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoPumpOnButton pressed.")
         await self._manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
+
 
 class VolcanoPumpOffButton(VolcanoBaseButton):
     """A button to turn Pump OFF by writing to a GATT characteristic."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Pump Off button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Pump Off"
         self._attr_unique_id = f"volcano_pump_off_button_{self._manager.bt_address}"
@@ -125,18 +124,18 @@ class VolcanoPumpOffButton(VolcanoBaseButton):
     @property
     def available(self):
         """Available only when Bluetooth is connected."""
-        return self._manager.bt_status == BT_STATUS_CONNECTED
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
-        """Handle button press to turn pump off."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoPumpOffButton pressed.")
         await self._manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
+
 
 class VolcanoHeatOnButton(VolcanoBaseButton):
     """A button to turn Heat ON by writing to a GATT characteristic."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Heat On button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Heat On"
         self._attr_unique_id = f"volcano_heat_on_button_{self._manager.bt_address}"
@@ -145,18 +144,18 @@ class VolcanoHeatOnButton(VolcanoBaseButton):
     @property
     def available(self):
         """Available only when Bluetooth is connected."""
-        return self._manager.bt_status == BT_STATUS_CONNECTED
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
-        """Handle button press to turn heat on."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoHeatOnButton pressed.")
         await self._manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
+
 
 class VolcanoHeatOffButton(VolcanoBaseButton):
     """A button to turn Heat OFF by writing to a GATT characteristic."""
 
     def __init__(self, manager, config_entry):
-        """Initialize the Heat Off button."""
         super().__init__(manager, config_entry)
         self._attr_name = "Volcano Heat Off"
         self._attr_unique_id = f"volcano_heat_off_button_{self._manager.bt_address}"
@@ -165,9 +164,9 @@ class VolcanoHeatOffButton(VolcanoBaseButton):
     @property
     def available(self):
         """Available only when Bluetooth is connected."""
-        return self._manager.bt_status == BT_STATUS_CONNECTED
+        return self._manager.bt_status == "CONNECTED"
 
     async def async_press(self):
-        """Handle button press to turn heat off."""
+        """Handle button press."""
         _LOGGER.debug("VolcanoHeatOffButton pressed.")
         await self._manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
