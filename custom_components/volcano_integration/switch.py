@@ -2,9 +2,11 @@
 import logging
 
 from homeassistant.components.switch import SwitchEntity
-from .const import DOMAIN
+
+from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Volcano switches for a config entry."""
