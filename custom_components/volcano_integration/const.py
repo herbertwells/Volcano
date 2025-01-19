@@ -181,3 +181,6 @@ SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
 SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
     vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
 })
+
+# Refresh Option Value for Config Flow
+REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
