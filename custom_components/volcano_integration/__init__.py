@@ -1,183 +1,212 @@
-"""const.py - Volcano Integration for Home Assistant."""
+"""__init__.py - Volcano Integration for Home Assistant."""
+import logging
+import asyncio
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
-from homeassistant.helpers import selector
 
-DOMAIN = "volcano_integration"
+from .bluetooth_coordinator import VolcanoBTManager
+from .const import (
+    DOMAIN,
+    UUID_PUMP_ON,
+    UUID_PUMP_OFF,
+    UUID_HEAT_ON,
+    UUID_HEAT_OFF,
+    SERVICE_CONNECT,
+    SERVICE_DISCONNECT,
+    SERVICE_PUMP_ON,
+    SERVICE_PUMP_OFF,
+    SERVICE_HEAT_ON,
+    SERVICE_HEAT_OFF,
+    SERVICE_SET_TEMPERATURE,
+    SERVICE_SET_AUTO_SHUTOFF_SETTING,
+    SERVICE_SET_LED_BRIGHTNESS,
+    CONNECT_SCHEMA,
+    DISCONNECT_SCHEMA,
+    PUMP_ON_SCHEMA,
+    PUMP_OFF_SCHEMA,
+    HEAT_ON_SCHEMA,
+    HEAT_OFF_SCHEMA,
+    SET_TEMPERATURE_SCHEMA,
+    SET_AUTO_SHUTOFF_SCHEMA,
+    SET_LED_BRIGHTNESS_SCHEMA,
+)
 
-# Possible Bluetooth status strings
-BT_STATUS_DISCONNECTED = "DISCONNECTED"
-BT_STATUS_CONNECTING = "CONNECTING"
-BT_STATUS_CONNECTED = "CONNECTED"
-BT_STATUS_ERROR = "ERROR"
+_LOGGER = logging.getLogger(__name__)
 
-# Vibration Bitmask Constants
-VIBRATION_BIT_MASK = 0x0400    # Bit 10
+PLATFORMS = ["sensor", "button", "number", "switch"]
 
-# Control Register UUIDs
-UUID_PUMP_NOTIFICATIONS = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications - WARNING! Duplicate
-REGISTER1_UUID = "1010000c-5354-4f52-5a26-4249434b454c"  # Pump Notifications  - WARNING! Duplicate
-REGISTER2_UUID = "1010000d-5354-4f52-5a26-4249434b454c"          # [Specify Purpose]
-REGISTER3_UUID = "1010000e-5354-4f52-5a26-4249434b454c"          # Vibration Control
+# -------------------------------------------------
+# Service Handlers
+# -------------------------------------------------
 
-# UUIDs for GATT Characteristics
-UUID_TEMP = "10110001-5354-4f52-5a26-4249434b454c"             # Current Temperature
-UUID_PUMP_ON = "10110013-5354-4f52-5a26-4249434b454c"
-UUID_PUMP_OFF = "10110014-5354-4f52-5a26-4249434b454c"
-UUID_HEAT_ON = "1011000f-5354-4f52-5a26-4249434b454c"
-UUID_HEAT_OFF = "10110010-5354-4f52-5a26-4249434b454c"
-UUID_HEATER_SETPOINT = "10110003-5354-4f52-5a26-4249434b454c"
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up integration via YAML (if any)."""
+    return True
 
-# Static attributes
-UUID_BLE_FIRMWARE_VERSION = "10100004-5354-4f52-5a26-4249434b454c"  # BLE Firmware Version
-UUID_SERIAL_NUMBER = "10100008-5354-4f52-5a26-4249434b454c"          # Serial Number
-UUID_FIRMWARE_VERSION = "10100003-5354-4f52-5a26-4249434b454c"       # Volcano Firmware Version
-UUID_AUTO_SHUT_OFF = "1011000c-5354-4f52-5a26-4249434b454c"          # Auto Shutoff
-UUID_AUTO_SHUT_OFF_SETTING = "1011000d-5354-4f52-5a26-4249434b454c" # Auto Shutoff Setting
-UUID_LED_BRIGHTNESS = "10110005-5354-4f52-5a26-4249434b454c"        # LED Brightness
-UUID_HOURS_OF_OPERATION = "10110015-5354-4f52-5a26-4249434b454c"    # Hours of Operation
-UUID_MINUTES_OF_OPERATION = "10110016-5354-4f52-5a26-4249434b454c"  # Minutes of Operation
-UUID_VIBRATION = "1010000e-5354-4f52-5a26-4249434b454c"            # Vibration Control
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up the Volcano Integration from a config entry."""
+    _LOGGER.debug("Setting up Volcano Integration from config entry: %s", entry.entry_id)
 
-# Service Names
-SERVICE_CONNECT = "connect"
-SERVICE_DISCONNECT = "disconnect"
-SERVICE_PUMP_ON = "pump_on"
-SERVICE_PUMP_OFF = "pump_off"
-SERVICE_HEAT_ON = "heat_on"
-SERVICE_HEAT_OFF = "heat_off"
-SERVICE_SET_TEMPERATURE = "set_temperature"
-SERVICE_SET_AUTO_SHUTOFF_SETTING = "set_auto_shutoff_setting"
-SERVICE_SET_LED_BRIGHTNESS = "set_led_brightness"
+    bt_address = entry.data.get("bt_address")
+    device_name = entry.data.get("device_name", "Volcano Vaporizer")
 
-# Service Descriptions
-SERVICE_DESCRIPTIONS = {
-    SERVICE_CONNECT: {
-        "description": "Connect to the Volcano device.",
-        "fields": {
-            "wait_until_connected": {
-                "name": "Wait Until Connected",
-                "description": "Whether to block until the device is fully connected.",
-                "required": False,
-                "default": False,
-                "selector": {
-                    "boolean": {}
-                },
-            }
-        },
-    },
-    SERVICE_DISCONNECT: {
-        "description": "Disconnect from the Volcano device.",
-        "fields": {},
-    },
-    SERVICE_PUMP_ON: {
-        "description": "Turn the Volcano's pump on.",
-        "fields": {},
-    },
-    SERVICE_PUMP_OFF: {
-        "description": "Turn the Volcano's pump off.",
-        "fields": {},
-    },
-    SERVICE_HEAT_ON: {
-        "description": "Turn the Volcano's heater on.",
-        "fields": {},
-    },
-    SERVICE_HEAT_OFF: {
-        "description": "Turn the Volcano's heater off.",
-        "fields": {},
-    },
-    SERVICE_SET_TEMPERATURE: {
-        "description": "Set the temperature of the Volcano vaporizer.",
-        "fields": {
-            "temperature": {
-                "name": "Temperature",
-                "description": "The target temperature in °C (40-230).",
-                "required": True,
-                "example": 170,
-                "selector": {
-                    "number": {
-                        "min": 40,
-                        "max": 230,
-                        "step": 1,
-                        "unit_of_measurement": "°C",
-                    }
-                },
-            },
-            "wait_until_reached": {
-                "name": "Wait Until Reached",
-                "description": "Whether to block until the target temperature is reached.",
-                "required": True,
-                "default": True,
-                "selector": {
-                    "boolean": {}
-                },
-            },
-        },
-    },
-    SERVICE_SET_AUTO_SHUTOFF_SETTING: {
-        "description": "Set the Auto Shutoff Setting for the Volcano in minutes.",
-        "fields": {
-            "minutes": {
-                "name": "Minutes",
-                "description": "Auto Shutoff delay, in minutes.",
-                "required": True,
-                "default": 30,
-                "selector": {
-                    "number": {
-                        "min": 1,
-                        "max": 240,
-                        "step": 1,
-                        "unit_of_measurement": "min",
-                    }
-                },
-            },
-        },
-    },
-    SERVICE_SET_LED_BRIGHTNESS: {
-        "description": "Set the LED Brightness of the Volcano (0-100).",
-        "fields": {
-            "brightness": {
-                "name": "Brightness",
-                "description": "The LED brightness percentage (0-100).",
-                "required": True,
-                "default": 20,
-                "selector": {
-                    "number": {
-                        "min": 0,
-                        "max": 100,
-                        "step": 1,
-                        "unit_of_measurement": "%",
-                    }
-                },
-            },
-        },
-    },
-}
+    manager = VolcanoBTManager(bt_address)
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = manager
 
-# Define Service Schemas
-CONNECT_SCHEMA = vol.Schema({
-    vol.Optional("wait_until_connected", default=False): bool,
-})
+    # Forward setup to sensor, button, number, switch platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-DISCONNECT_SCHEMA = vol.Schema({})
+    # -------------------------------------------------
+    # Service Handlers Definitions
+    # -------------------------------------------------
+    async def handle_connect(call):
+        """Handle the connect service."""
+        _LOGGER.debug("Service 'connect' called.")
+        wait = call.data.get("wait_until_connected", False)
+        if not manager._connected:
+            await manager.async_user_connect()
+            if wait:
+                await wait_until_connected(hass, manager)
+        else:
+            _LOGGER.info("Already connected to the device.")
 
-PUMP_ON_SCHEMA = vol.Schema({})
+    async def handle_disconnect(call):
+        """Handle the disconnect service."""
+        _LOGGER.debug("Service 'disconnect' called.")
+        if manager._connected:
+            await manager.async_user_disconnect()
+        else:
+            _LOGGER.info("Device already disconnected.")
 
-PUMP_OFF_SCHEMA = vol.Schema({})
+    async def handle_pump_on(call):
+        """Handle the pump_on service."""
+        _LOGGER.debug("Service 'pump_on' called.")
+        await manager.write_gatt_command(UUID_PUMP_ON, payload=b"\x01")
 
-HEAT_ON_SCHEMA = vol.Schema({})
+    async def handle_pump_off(call):
+        """Handle the pump_off service."""
+        _LOGGER.debug("Service 'pump_off' called.")
+        await manager.write_gatt_command(UUID_PUMP_OFF, payload=b"\x00")
 
-HEAT_OFF_SCHEMA = vol.Schema({})
+    async def handle_heat_on(call):
+        """Handle the heat_on service."""
+        _LOGGER.debug("Service 'heat_on' called.")
+        await manager.write_gatt_command(UUID_HEAT_ON, payload=b"\x01")
 
-SET_TEMPERATURE_SCHEMA = vol.Schema({
-    vol.Required("temperature"): vol.All(vol.Coerce(float), vol.Range(min=40, max=230)),
-    vol.Required("wait_until_reached", default=True): bool,
-})
+    async def handle_heat_off(call):
+        """Handle the heat_off service."""
+        _LOGGER.debug("Service 'heat_off' called.")
+        await manager.write_gatt_command(UUID_HEAT_OFF, payload=b"\x00")
 
-SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
-    vol.Required("minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
-})
+    async def handle_set_temperature(call):
+        """Handle the set_temperature service."""
+        temperature = call.data["temperature"]
+        wait = call.data["wait_until_reached"]
 
-SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
-    vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-})
+        _LOGGER.debug(f"Service 'set_temperature' called with temperature={temperature}, wait={wait}")
+        await manager.set_heater_temperature(temperature)
+        if wait:
+            await wait_for_temperature(hass, manager, temperature)
+
+    async def handle_set_auto_shutoff_setting(call):
+        """Set the Volcano auto shutoff setting in minutes."""
+        minutes = call.data["minutes"]
+        _LOGGER.debug(f"Service 'set_auto_shutoff_setting' called with minutes={minutes}")
+        await manager.set_auto_shutoff_setting(minutes)
+
+    async def handle_set_led_brightness(call):
+        """Set the Volcano LED brightness."""
+        brightness = call.data["brightness"]
+        _LOGGER.debug(f"Service 'set_led_brightness' called with brightness={brightness}")
+        await manager.set_led_brightness(brightness)
+
+    # -------------------------------------------------
+    # Helper Functions
+    # -------------------------------------------------
+    async def wait_for_temperature(hass: HomeAssistant, manager: VolcanoBTManager, target_temp: float):
+        """Wait until the current temperature reaches or exceeds the target temperature."""
+        timeout = 300  # 5 minutes
+        elapsed_time = 0
+        _LOGGER.debug(f"Waiting for temperature to reach {target_temp}°C with timeout {timeout}s")
+
+        while elapsed_time < timeout:
+            if manager.current_temperature is not None:
+                _LOGGER.debug(
+                    f"Current temperature is {manager.current_temperature}°C; target is {target_temp}°C"
+                )
+                if manager.current_temperature >= target_temp:
+                    _LOGGER.info(f"Target temperature {target_temp}°C reached.")
+                    return
+            else:
+                _LOGGER.warning("Current temperature is None; retrying...")
+
+            await asyncio.sleep(0.5)
+            elapsed_time += 0.5
+
+        _LOGGER.warning(f"Timeout reached while waiting for temperature {target_temp}°C.")
+
+    async def wait_until_connected(hass: HomeAssistant, manager: VolcanoBTManager):
+        """Wait until the Bluetooth manager is connected."""
+        timeout = 30  # 30 seconds
+        elapsed_time = 0
+        _LOGGER.debug(f"Waiting for Bluetooth to connect with timeout {timeout}s")
+
+        while elapsed_time < timeout:
+            if manager.bt_status == BT_STATUS_CONNECTED:
+                _LOGGER.info("Bluetooth connection established.")
+                return
+            elif manager.bt_status == BT_STATUS_ERROR:
+                _LOGGER.warning("Bluetooth connection encountered an error.")
+                return
+            await asyncio.sleep(0.5)
+            elapsed_time += 0.5
+
+        _LOGGER.warning("Timeout reached while waiting for Bluetooth to connect.")
+
+    # -------------------------------------------------
+    # Register All Services with Descriptions
+    # -------------------------------------------------
+    hass.services.async_register(DOMAIN, SERVICE_CONNECT, handle_connect, schema=CONNECT_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_DISCONNECT, handle_disconnect, schema=DISCONNECT_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_ON, handle_pump_on, schema=PUMP_ON_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_PUMP_OFF, handle_pump_off, schema=PUMP_OFF_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_ON, handle_heat_on, schema=HEAT_ON_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_HEAT_OFF, handle_heat_off, schema=HEAT_OFF_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature, schema=SET_TEMPERATURE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_AUTO_SHUTOFF_SETTING, handle_set_auto_shutoff_setting, schema=SET_AUTO_SHUTOFF_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_LED_BRIGHTNESS, handle_set_led_brightness, schema=SET_LED_BRIGHTNESS_SCHEMA
+    )
+
+    # IMPORTANT: No auto-connect call here -> user must trigger connect
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload the Volcano Integration."""
+    _LOGGER.debug("Unloading Volcano Integration entry: %s", entry.entry_id)
+
+    manager = hass.data[DOMAIN].pop(entry.entry_id, None)
+    if manager:
+        await manager.stop()
+
+    # Unregister services
+    hass.services.async_remove(DOMAIN, SERVICE_CONNECT)
+    hass.services.async_remove(DOMAIN, SERVICE_DISCONNECT)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_ON)
+    hass.services.async_remove(DOMAIN, SERVICE_PUMP_OFF)
+    hass.services.async_remove(DOMAIN, SERVICE_HEAT_ON)
+    hass.services.async_remove(DOMAIN, SERVICE_HEAT_OFF)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_AUTO_SHUTOFF_SETTING)
+    hass.services.async_remove(DOMAIN, SERVICE_SET_LED_BRIGHTNESS)
+
+    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return True
