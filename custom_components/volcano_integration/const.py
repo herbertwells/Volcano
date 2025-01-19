@@ -1,5 +1,8 @@
 """const.py - Volcano Integration for Home Assistant."""
 
+import voluptuous as vol
+from homeassistant.helpers import selector
+
 DOMAIN = "volcano_integration"
 
 # Possible Bluetooth status strings
@@ -150,3 +153,31 @@ SERVICE_DESCRIPTIONS = {
         },
     },
 }
+
+# Define Service Schemas
+CONNECT_SCHEMA = vol.Schema({
+    vol.Optional("wait_until_connected", default=False): bool,
+})
+
+DISCONNECT_SCHEMA = vol.Schema({})
+
+PUMP_ON_SCHEMA = vol.Schema({})
+
+PUMP_OFF_SCHEMA = vol.Schema({})
+
+HEAT_ON_SCHEMA = vol.Schema({})
+
+HEAT_OFF_SCHEMA = vol.Schema({})
+
+SET_TEMPERATURE_SCHEMA = vol.Schema({
+    vol.Required("temperature"): vol.All(vol.Coerce(float), vol.Range(min=40, max=230)),
+    vol.Required("wait_until_reached", default=True): bool,
+})
+
+SET_AUTO_SHUTOFF_SCHEMA = vol.Schema({
+    vol.Required("minutes", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+})
+
+SET_LED_BRIGHTNESS_SCHEMA = vol.Schema({
+    vol.Required("brightness", default=20): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+})
