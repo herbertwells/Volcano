@@ -43,7 +43,6 @@ class VolcanoBaseSensor(SensorEntity):
 
     def __init__(self, manager, config_entry):
         """Initialize the base sensor with manager and config entry."""
-        super().__init__()
         self._manager = manager
         self._config_entry = config_entry
 
