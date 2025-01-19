@@ -8,10 +8,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
-from .const import DOMAIN, REFRESH_OPTION_VALUE
+from .const import DOMAIN
 from bleak import BleakScanner
 
 _LOGGER = logging.getLogger(__name__)
+
+REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
 
 class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Volcano Integration."""
