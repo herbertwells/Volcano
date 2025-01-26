@@ -19,7 +19,7 @@ The default workflow in the official app is as follows:
 - Wait until temperature reaches target.
 - Turn on pump for 5 seconds. Set heat to 180C.
 - Wait until temperature reaches target. Turn on pump for 5 seconds.
-- Repeats until temperature reaches 220C.
+- Repeats until temperature reaches 200C.
 
 ```
 
