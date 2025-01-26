@@ -110,7 +110,7 @@ sequence:
     data: {}
   - action: volcano_integration.heat_off
     data: {}
-description: ""
+description: "A full workflow from 170C to 200C, with 5 second pumps between every 5C."
 mode: restart
 
 
@@ -128,7 +128,7 @@ sequence:
     target:
       entity_id:
         - script.volcano_workflow_1
-description: ""
+description: "Stops all Volcano scripts and turns off the heat/pump."
 mode: restart
 
 ```
