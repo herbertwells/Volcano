@@ -135,9 +135,7 @@ mode: restart
 
 Now you're set to create your own scripts and automations for the Volcano Vaporizer.
 
-⚠️ WARNING: For safety reasons, do not leave your Volcano Vaporizer running while unattended. This is an experimental integration, subject to changes in functionality at any time, and should not be considered reliable. The Volcano poses a fire hazard and must be used with caution. ⚠️
-
-
+⚠️ WARNING: For safety reasons, do not leave your Volcano Vaporizer running while unattended. This is an experimental integration, subject to changes in functionality at any time, and should not be considered reliable. The Volcano poses a fire hazard and must be used with caution.
 
 ---
 
