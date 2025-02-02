@@ -10,7 +10,6 @@ One of the main features of the official Volcano app includes workflows; these a
 The default workflow in the official app is as follows:
 
 ```
-
 - Turn heat on.
 - Set temperature to 170C.
 - Wait until temperature reaches target.
@@ -20,14 +19,12 @@ The default workflow in the official app is as follows:
 - Turn on pump for 5 seconds. Set heat to 180C.
 - Wait until temperature reaches target. Turn on pump for 5 seconds.
 - Repeats until temperature reaches 200C.
-
 ```
 
 
 To translate this into a Home Assistant script:
 
 ```
-
 alias: Volcano Workflow 1
 sequence:
   - action: volcano_integration.connect
@@ -112,14 +109,11 @@ sequence:
     data: {}
 description: "A full workflow from 170C to 200C, with 5 second pumps between every 5C."
 mode: restart
-
-
 ```
 
 I also strongly recommend creating another script, which allows you to stop any Volcano workflow at will. It should also turn the heat and pump off:
 
 ```
-
 alias: Volcano Stop All Scripts
 sequence:
   - action: volcano_integration.heat_off
@@ -130,7 +124,6 @@ sequence:
         - script.volcano_workflow_1
 description: "Stops all Volcano scripts and turns off the heat/pump."
 mode: restart
-
 ```
 
 Now you're set to create your own scripts and automations for the Volcano Vaporizer.
