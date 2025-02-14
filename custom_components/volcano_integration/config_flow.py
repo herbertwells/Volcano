@@ -15,7 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 
 REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
 
-class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+# Change base class to match the domain
+@config_entries.HANDLERS.register(DOMAIN)
+class VolcanoConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 2
