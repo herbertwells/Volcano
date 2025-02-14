@@ -1,7 +1,10 @@
 """config_flow.py - Volcano Integration for Home Assistant."""
 import logging
 import asyncio
+from typing import Any
 
+# Move all imports to the top level
+from bleak import BleakScanner
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
@@ -9,26 +12,24 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
 from .const import DOMAIN
-from bleak import BleakScanner
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.debug("Loading config_flow module")  # Add this line at the top
 
 REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
 
-@config_entries.HANDLERS.register(DOMAIN)
-class VolcanoConfigFlow(config_entries.ConfigFlow):
+class VolcanoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the config flow."""
         self._discovered_devices = {}
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
-        """Handle the initial step of the config flow."""
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Handle the initial step."""
         _LOGGER.debug("Initiating Volcano Integration config flow.")
 
         if user_input is not None:

@@ -1,6 +1,7 @@
 """__init__.py - Volcano Integration for Home Assistant."""
 import logging
 import asyncio
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.debug("Loading volcano_integration module")  # Add this line at the top
