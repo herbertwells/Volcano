@@ -2,6 +2,9 @@
 import logging
 import asyncio
 
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.debug("Loading volcano_integration module")  # Add this line at the top
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv

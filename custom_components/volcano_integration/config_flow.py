@@ -12,14 +12,15 @@ from .const import DOMAIN
 from bleak import BleakScanner
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.debug("Loading config_flow module")  # Add this line at the top
 
 REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
 
+@config_entries.HANDLERS.register(DOMAIN)
 class VolcanoConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 2
-    DOMAIN = DOMAIN  # Required for config flow handler registration
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
@@ -118,3 +119,14 @@ class VolcanoOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the Volcano options."""
         _LOGGER.debug("Initiating options flow.")
         return self.async_create_entry(title="", data=user_input or {})
+
+def verify_registration():
+    """Verify that the config flow is properly registered."""
+    _LOGGER.debug("Verifying config flow registration for domain: %s", DOMAIN)
+    from homeassistant.config_entries import HANDLERS
+    if DOMAIN in HANDLERS:
+        _LOGGER.debug("Config flow successfully registered")
+    else:
+        _LOGGER.error("Config flow registration failed!")
+
+verify_registration()  # Add this at the bottom of the file
