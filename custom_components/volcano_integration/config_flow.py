@@ -15,12 +15,11 @@ _LOGGER = logging.getLogger(__name__)
 
 REFRESH_OPTION_VALUE = "REFRESH_DEVICE_LIST"
 
-# Change base class to match the domain
-@config_entries.HANDLERS.register(DOMAIN)
 class VolcanoConfigFlow(config_entries.ConfigFlow):
     """Handle a config flow for Volcano Integration."""
 
     VERSION = 2
+    DOMAIN = DOMAIN  # Required for config flow handler registration
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
