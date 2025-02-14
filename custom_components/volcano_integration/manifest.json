@@ -22,5 +22,8 @@
     {
       "local_name": "VOLCANO_*"
     }
-  ]
+  ],
+  "hacs": "default",
+  "homeassistant": "2023.8.0",
+  "minimum_ha_version": "2023.8.0"
 }
