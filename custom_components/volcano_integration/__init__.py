@@ -72,7 +72,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     bt_address = entry.data.get("bt_address")
     device_name = entry.data.get("device_name", "Volcano Vaporizer")
 
-    manager = VolcanoBTManager(bt_address)
+    # Pass hass instance to manager
+    manager = VolcanoBTManager(hass, bt_address)
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = manager
 

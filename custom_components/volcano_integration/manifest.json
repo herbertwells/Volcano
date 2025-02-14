@@ -4,7 +4,7 @@
   "version": "3.1.1",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
   "issue_tracker": "https://github.com/Chuffnugget/volcano_integration/issues",
-  "dependencies": [],
+  "dependencies": ["bluetooth"],
   "codeowners": ["@Chuffnugget"],
   "iot_class": "local_polling",
   "config_flow": true,
@@ -17,5 +17,10 @@
     "Bluetooth",
     "Vaporizer",
     "Temperature Control"
+  ],
+  "bluetooth": [
+    {
+      "local_name": "VOLCANO_*"
+    }
   ]
 }
