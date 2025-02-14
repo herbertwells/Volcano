@@ -1,7 +1,7 @@
 {
   "domain": "volcano_integration",
   "name": "Volcano Integration",
-  "version": "3.1.1",
+  "version": "1.0.0",
   "documentation": "https://github.com/Chuffnugget/volcano_integration",
   "issue_tracker": "https://github.com/Chuffnugget/volcano_integration/issues",
   "dependencies": ["bluetooth"],
@@ -12,18 +12,10 @@
   "requirements": [
     "bleak>=0.20.0"
   ],
-  "keywords": [
-    "Volcano",
-    "Bluetooth",
-    "Vaporizer",
-    "Temperature Control"
-  ],
   "bluetooth": [
     {
       "local_name": "VOLCANO_*"
     }
   ],
-  "hacs": "default",
-  "homeassistant": "2023.8.0",
-  "minimum_ha_version": "2023.8.0"
+  "homeassistant": "2023.8.0"
 }
