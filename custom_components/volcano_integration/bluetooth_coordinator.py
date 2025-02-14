@@ -342,7 +342,7 @@ class VolcanoBTManager:
             _LOGGER.info("Hours of Operation: %s hours", self.hours_of_operation)
             self._notify_sensors()
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while reading Hours of Operation: %s", e)
             else:
                 _LOGGER.warning("Error reading Hours of Operation: %s", e)
@@ -362,7 +362,7 @@ class VolcanoBTManager:
             _LOGGER.info("Minutes of Operation: %s minutes", self.minutes_of_operation)
             self._notify_sensors()
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while reading Minutes of Operation: %s", e)
             else:
                 _LOGGER.warning("Error reading Minutes of Operation: %s", e)
@@ -388,7 +388,7 @@ class VolcanoBTManager:
             await self._client.start_notify(UUID_PUMP_NOTIFICATIONS, notification_handler)
             _LOGGER.info("Subscribed to pump notifications.")
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while subscribing to pump notifications: %s", e)
             else:
                 _LOGGER.warning("Error subscribing to pump notifications: %s", e)
@@ -415,7 +415,7 @@ class VolcanoBTManager:
                 _LOGGER.warning("Received incomplete temperature data: %s", data)
             self._notify_sensors()
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while reading temperature: %s", e)
             else:
                 _LOGGER.warning("Error reading temperature: %s -> disconnect & retry...", e)
@@ -436,7 +436,7 @@ class VolcanoBTManager:
                 await self._client.disconnect()
                 _LOGGER.info("Disconnected from Bluetooth device %s.", self.bt_address)
             except BleakError as e:
-                if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+                if "No adapter found" in str(e) or "adapter" in str(e).lower():
                     _LOGGER.error("Missing bluetooth adapter during disconnection: %s", e)
                 else:
                     _LOGGER.warning("Bluetooth disconnection warning: %s", e)
@@ -453,7 +453,7 @@ class VolcanoBTManager:
             await self._client.write_gatt_char(write_uuid, payload)
             _LOGGER.info("Successfully wrote to UUID: %s", write_uuid)
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while writing to %s: %s", write_uuid, e)
             else:
                 _LOGGER.warning("Error writing to %s: %s", write_uuid, e)
@@ -469,7 +469,7 @@ class VolcanoBTManager:
             await self._client.write_gatt_char(UUID_HEATER_SETPOINT, payload)
             _LOGGER.info("Heater temperature set to %.1f °C.", safe_temp)
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while writing heater temperature: %s", e)
             else:
                 _LOGGER.warning("Error writing heater temperature: %s", e)
@@ -487,7 +487,7 @@ class VolcanoBTManager:
             self._notify_sensors()
             _LOGGER.info("LED Brightness set to %d%%", clamped_brightness)
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while writing LED brightness: %s", e)
             else:
                 _LOGGER.warning("Error writing LED brightness: %s", e)
@@ -504,7 +504,7 @@ class VolcanoBTManager:
             self._notify_sensors()
             _LOGGER.info("Auto Shutoff set to %s", self.auto_shut_off)
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while writing Auto Shutoff: %s", e)
             else:
                 _LOGGER.warning("Error writing Auto Shutoff: %s", e)
@@ -524,7 +524,7 @@ class VolcanoBTManager:
             self._notify_sensors()
             _LOGGER.info("Auto Shutoff Setting set to %d minutes", minutes)
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while writing Auto Shutoff Setting: %s", e)
             else:
                 _LOGGER.warning("Error writing Auto Shutoff Setting: %s", e)
@@ -564,7 +564,7 @@ class VolcanoBTManager:
             _LOGGER.info("Vibration set to %s", self.vibration)
 
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while setting vibration: %s", e)
             else:
                 _LOGGER.warning("Error setting vibration: %s", e)
@@ -593,7 +593,7 @@ class VolcanoBTManager:
             self._notify_sensors()
 
         except BleakError as e:
-            if "No adapter found" in str(e) or "adapter" in str(e).lower()):
+            if "No adapter found" in str(e) or "adapter" in str(e).lower():
                 _LOGGER.error("Missing bluetooth adapter while reading vibration: %s", e)
             else:
                 _LOGGER.warning("Error reading vibration: %s", e)
