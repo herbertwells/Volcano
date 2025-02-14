@@ -1,0 +1,82 @@
+connect:
+  description: "Connect to the Volcano device."
+  fields:
+    wait_until_connected:
+      name: "Wait Until Connected"
+      description: "Whether to block until the device is fully connected."
+      required: false
+      default: false
+      selector:
+        boolean: {}
+
+disconnect:
+  description: "Disconnect from the Volcano device."
+  fields: {}
+
+pump_on:
+  description: "Turn the Volcano's pump on."
+  fields: {}
+
+pump_off:
+  description: "Turn the Volcano's pump off."
+  fields: {}
+
+heat_on:
+  description: "Turn the Volcano's heater on."
+  fields: {}
+
+heat_off:
+  description: "Turn the Volcano's heater off."
+  fields: {}
+
+set_temperature:
+  description: "Set the temperature of the Volcano vaporizer."
+  fields:
+    temperature:
+      name: "Temperature"
+      description: "The target temperature in °C (40-230)."
+      required: true
+      example: 170
+      selector:
+        number:
+          min: 40
+          max: 230
+          step: 1
+          unit_of_measurement: "°C"
+    wait_until_reached:
+      name: "Wait Until Reached"
+      description: "Whether to block until the target temperature is reached."
+      required: true
+      default: true
+      selector:
+        boolean: {}
+
+set_auto_shutoff_setting:
+  description: "Set the Auto Shutoff Setting for the Volcano in minutes."
+  fields:
+    minutes:
+      name: "Minutes"
+      description: "Auto Shutoff delay, in minutes."
+      required: true
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 240
+          step: 1
+          unit_of_measurement: "min"
+
+set_led_brightness:
+  description: "Set the LED Brightness of the Volcano (0-100)."
+  fields:
+    brightness:
+      name: "Brightness"
+      description: "The LED brightness percentage (0-100)."
+      required: true
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
